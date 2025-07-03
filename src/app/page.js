@@ -20,6 +20,8 @@ export default function LandingPage() {
           <a href="#how" className="text-gray-700 hover:text-orange-700">Comment ça marche</a>
           <a href="#avantages" className="text-gray-700 hover:text-orange-700">Avantages</a>
           <a href="#temoignages" className="text-gray-700 hover:text-orange-700">Témoignages</a>
+          <a href="/login" className="text-gray-700 hover:text-orange-700">Se connecter</a>
+          <a href="/signup" className="text-gray-700 hover:text-orange-700">S'inscrire</a>
         </nav>
       </header>
 
