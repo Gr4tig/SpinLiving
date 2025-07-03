@@ -4,15 +4,17 @@ Kickstart your Next.js development with this ready-to-use starter project integr
 
 ## 🚀Getting started
 
-###
-Clone the Project
+### Clone the Project
 Clone this repository to your local machine using Git:
 
 `git clone https://github.com/appwrite/starter-for-nextjs`
 
-## 🛠️ Development guid
+## 🛠️ Development guide
 1. **Configure Appwrite**<br/>
    Navigate to `.env` and update the values to match your Appwrite project credentials.
+   When deploying to a platform like Vercel, ensure the `NEXT_PUBLIC_APPWRITE_ENDPOINT`
+   and `NEXT_PUBLIC_APPWRITE_PROJECT_ID` environment variables are available.
+   Otherwise the Appwrite client will only be partially initialised.
 2. **Customize as needed**<br/>
    Modify the starter kit to suit your app's requirements. Adjust UI, features, or backend
    integrations as per your needs.
