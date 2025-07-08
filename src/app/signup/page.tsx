@@ -1,66 +1,87 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "../../lib/AuthProvider";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { register } from '@/lib/appwrite';
+import { toast } from 'sonner';
 
-export default function SignupPage() {
-  const { signup } = useAuth();
+export default function RegisterPage() {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+
     try {
-      await signup(email, password, name);
-      router.push("/dashboard");
+      await register(email, password, name);
+      toast.success('Inscription réussie ✅');
+      router.push('/dashboard');
     } catch (err: any) {
-      setError(err.message);
+      toast.error(err.message || "Échec de l'inscription ❌");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-6 rounded shadow w-full max-w-sm space-y-4"
-      >
-        <h1 className="text-xl font-bold text-center">Créer un compte</h1>
-        {error && <p className="text-red-600">{error}</p>}
-        <input
-          type="text"
-          placeholder="Nom"
-          className="border w-full p-2 rounded"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          className="border w-full p-2 rounded"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Mot de passe"
-          className="border w-full p-2 rounded"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <button
-          type="submit"
-          className="w-full bg-orange-700 text-white p-2 rounded"
+    <>
+      <main className="flex items-center justify-center min-h-screen bg-gray-100 px-4">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white p-6 rounded-2xl shadow-md w-full max-w-md space-y-4"
         >
-          Inscription
-        </button>
-      </form>
-    </div>
+          <h1 className="text-2xl font-bold text-center text-[#8008AF]">Inscription</h1>
+
+          <input
+            type="text"
+            placeholder="Nom complet"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+            disabled={loading}
+            className="w-full p-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8008AF]"
+          />
+
+          <input
+            type="email"
+            placeholder="Adresse e-mail"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            disabled={loading}
+            className="w-full p-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8008AF]"
+          />
+
+          <input
+            type="password"
+            placeholder="Mot de passe"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            disabled={loading}
+            className="w-full p-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8008AF]"
+          />
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-[#8008AF] text-white py-2 rounded-xl hover:bg-[#6d0793] transition"
+          >
+            {loading ? 'Inscription...' : "S'inscrire"}
+          </button>
+
+          <p className="text-center text-sm">
+            Déjà inscrit ?{' '}
+            <a href="/login" className="text-[#8008AF] font-semibold hover:underline">
+              Se connecter
+            </a>
+          </p>
+        </form>
+      </main>
+    </>
   );
 }
