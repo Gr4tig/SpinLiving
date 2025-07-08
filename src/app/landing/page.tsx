@@ -26,7 +26,7 @@ const Index = () => {
 
         <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gradient mb-6">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white text-gradient mb-6">
               Votre colocation flexible
             </h1>
             <p className="text-xl md:text-2xl text-white/80 max-w-2xl mx-auto mb-8">

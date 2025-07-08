@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@tailwind base;
+@tailwind components;
 @tailwind utilities;
 
 summary::-webkit-details-marker {
@@ -19,4 +21,9 @@ summary::-webkit-details-marker {
   mask-image: radial-gradient(ellipse at 50% 40%, black 0%, transparent 55%);
   z-index: -1;
   background-position-x: center;
+}
+
+@theme {
+  --color-primary: #FF5D3D;
+  --color-secondary: #010101;
 }

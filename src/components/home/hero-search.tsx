@@ -52,7 +52,7 @@ export function HeroSearch() {
   };
 
   return (
-    <div className="glass-morphism rounded-2xl p-4 sm:p-6 max-w-3xl w-full mx-auto">
+    <div className="glass-morphism bg-black/10 rounded-2xl p-4 sm:p-6 max-w-3xl w-full mx-auto">
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1">
           <Input
@@ -90,7 +90,7 @@ export function HeroSearch() {
           </PopoverContent>
         </Popover>
         
-        <Button onClick={handleSearch} className="sm:w-auto">
+        <Button onClick={handleSearch} className="sm:w-auto bg-primary">
           <Search className="h-4 w-4 mr-2" />
           Rechercher
         </Button>
