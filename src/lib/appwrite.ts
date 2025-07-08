@@ -2,6 +2,7 @@ import { Client, Account, Databases, Models, ID } from "appwrite";
 
 const client = new Client();
 
+
 if (process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT) {
   client.setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT);
 } else {
@@ -26,7 +27,13 @@ export { client, account, databases };
 export async function register(
   email: string,
   password: string,
-  name: string
+  name: string,
+  prenom: string,
+  tel: string,
+  ville: string,
+  objectif: string,
+  photo: string,
+  accountType: "locataire" | "proprietaire"
 ): Promise<Models.Session> {
   const MIN_PASSWORD_LENGTH = 8;
 
@@ -36,39 +43,37 @@ export async function register(
     }
 
     const userId = ID.unique();
-    console.log('🧪 ID généré localement :', userId);
 
-    // Création du compte
-    await account.create(userId, email, password, name);
-    
+    // Création du compte utilisateur
+    await account.create(userId, email, password, `${prenom} ${name}`);
+
     // Attendre un court instant pour s'assurer que le compte est bien créé
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    try {
-      // Tentative de connexion
-      const session = await account.createEmailPasswordSession(email, password);
-      return session;
-    } catch (sessionErr: any) {
-      console.error('❌ Erreur lors de la création de session', sessionErr);
-      // Si la connexion échoue, on déconnecte l'utilisateur
-      try {
-        await account.deleteSession('current');
-      } catch (logoutErr) {
-        console.error('❌ Erreur lors de la déconnexion', logoutErr);
-      }
-      throw new Error('Compte créé mais impossible de se connecter automatiquement. Veuillez vous connecter manuellement.');
-    }
-  } catch (err: any) {
-    if (err.code === 429) {
-      console.warn('⏱ Trop de requêtes envoyées à Appwrite');
-      throw new Error('Trop de tentatives. Réessaie dans 30 secondes.');
-    }
-    if (err.code === 409) {
-      throw new Error('Un compte avec cet email existe déjà.');
+    // Création du document dans la bonne collection
+    let collectionId = "";
+    let data: Record<string, any> = {};
+
+    if (accountType === "locataire") {
+      collectionId = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_LOCATAIRE_ID!;
+      data = { nom: name, prenom, tel, ville, objectif, photo, userid: userId };
+    } else {
+      collectionId = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_PROPRIO_ID!;
+      data = { nom: name, prenom, tel, photo, userid: userId };
     }
 
-    console.error('❌ Erreur Appwrite.register()', err);
-    throw new Error('Une erreur inconnue est survenue.');
+    await databases.createDocument(
+      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
+      collectionId,
+      ID.unique(),
+      data
+    );
+
+    // Création de la session
+    const session = await account.createEmailPasswordSession(email, password);
+    return session;
+  } catch (err: any) {
+    throw err;
   }
 }
 
@@ -101,3 +106,13 @@ export async function login(
     throw new Error('Une erreur est survenue lors de la connexion');
   }
 }
+
+export async function logout(): Promise<void> {
+  try {
+    await account.deleteSession('current');
+  } catch (err: any) {
+    console.error('❌ Erreur Appwrite.logout()', err);
+    throw new Error('Une erreur est survenue lors de la déconnexion');
+  }
+}
+

@@ -5,18 +5,6 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../../lib/AuthProvider";
 
 export default function DashboardPage() {
-  const { user, logout } = useAuth();
-  const router = useRouter();
-
-  useEffect(() => {
-    if (user === null) {
-      router.replace("/login");
-    }
-  }, [user, router]);
-
-  if (!user) {
-    return null;
-  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
