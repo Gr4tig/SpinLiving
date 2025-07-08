@@ -3,13 +3,11 @@
 import "./app.css";
 import "@appwrite.io/pink-icons";
 import { useState, useEffect, useRef, useCallback } from "react";
-import { client } from "@/lib/appwrite";
+import { client } from "../lib/appwrite";
 import { AppwriteException } from "appwrite";
-import NextjsLogo from "../static/nextjs-icon.svg";
-import AppwriteLogo from "../static/appwrite-icon.svg";
 import Image from "next/image";
+import React from "react";
 
-// app/landing/page.tsx
 export default function LandingPage() {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-orange-50 to-yellow-50">
