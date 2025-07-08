@@ -1,0 +1,100 @@
+"use client";
+
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarIcon, Search } from 'lucide-react';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { useRouter } from 'next/navigation';
+import { DateRange } from 'react-day-picker';
+
+export function HeroSearch() {
+  const [city, setCity] = useState('');
+  const [dateRange, setDateRange] = useState<DateRange>({
+    from: undefined,
+    to: undefined,
+  });
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  
+  const router = useRouter();
+
+  const handleSearch = () => {
+    const params = new URLSearchParams();
+    
+    if (city) {
+      params.append('city', city);
+    }
+    
+    if (dateRange.from) {
+      params.append('from', dateRange.from.toISOString());
+    }
+    
+    if (dateRange.to) {
+      params.append('to', dateRange.to.toISOString());
+    }
+    
+    router.push(`/search?${params.toString()}`);
+  };
+
+  const formatDateDisplay = () => {
+    if (dateRange.from && dateRange.to) {
+      return `${format(dateRange.from, 'dd MMM', { locale: fr })} - ${format(dateRange.to, 'dd MMM', { locale: fr })}`;
+    }
+    
+    if (dateRange.from) {
+      return `${format(dateRange.from, 'dd MMM', { locale: fr })} - ?`;
+    }
+    
+    return 'Dates';
+  };
+
+  return (
+    <div className="glass-morphism rounded-2xl p-4 sm:p-6 max-w-3xl w-full mx-auto">
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex-1">
+          <Input
+            placeholder="Ville"
+            className="w-full bg-white/10 border-white/20"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+          />
+        </div>
+        
+        <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
+          <PopoverTrigger asChild>
+            <Button 
+              variant="outline" 
+              className="w-full sm:w-auto flex justify-between items-center gap-2 bg-white/10 border-white/20"
+            >
+              <CalendarIcon className="h-4 w-4" />
+              <span>{formatDateDisplay()}</span>
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0 bg-background border-white/10" align="start">
+            <Calendar
+              initialFocus
+              mode="range"
+              defaultMonth={dateRange.from}
+              selected={dateRange}
+              onSelect={(range) => {
+                setDateRange(range || { from: undefined, to: undefined });
+                if (range?.to) setIsCalendarOpen(false);
+              }}
+              numberOfMonths={2}
+              locale={fr}
+              className="p-3 pointer-events-auto"
+            />
+          </PopoverContent>
+        </Popover>
+        
+        <Button onClick={handleSearch} className="sm:w-auto">
+          <Search className="h-4 w-4 mr-2" />
+          Rechercher
+        </Button>
+      </div>
+    </div>
+  );
+}
