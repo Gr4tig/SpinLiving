@@ -1,9 +1,16 @@
+import React from "react";
+import { ReactNode } from "react";
+
 export const metadata = {
   title: "Appwrite + Next.js",
   description: "Appwrite starter for Next.js",
 };
 
-export default function RootLayout({ children }) {
+type RootLayoutProps = {
+  children: ReactNode;
+};
+
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
       <head>

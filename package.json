@@ -19,10 +19,10 @@
     "tailwindcss": "^4.0.14"
   },
   "devDependencies": {
+    "@types/node": "18.19.115",
+    "@types/react": "18.3.23",
     "prettier": "3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
-    "typescript": "^5.4.5",
-    "@types/react": "^18.2.67",
-    "@types/node": "^18.19.21"
+    "typescript": "5.8.3"
   }
 }
