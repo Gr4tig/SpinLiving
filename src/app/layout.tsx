@@ -1,5 +1,6 @@
 import React from "react";
 import { ReactNode } from "react";
+import { AuthProvider } from "../lib/AuthProvider";
 
 export const metadata = {
   title: "Appwrite + Next.js",
@@ -24,7 +25,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <link rel="icon" type="image/svg+xml" href="/appwrite.svg" />
       </head>
       <body className={"bg-[#FAFAFB] font-[Inter] text-sm text-[#56565C]"}>
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

@@ -7,17 +7,37 @@ import { client } from "../lib/appwrite";
 import { AppwriteException } from "appwrite";
 import Image from "next/image";
 import React from "react";
+import { useAuth } from "../lib/AuthProvider";
 
 export default function LandingPage() {
+  const { user, logout } = useAuth();
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-orange-50 to-yellow-50">
       {/* Header */}
       <header className="flex justify-between items-center px-8 py-6 bg-white shadow">
         <div className="text-2xl font-bold text-orange-700">Spin Living</div>
-        <nav className="space-x-6">
+        <nav className="space-x-6 flex items-center">
           <a href="#how" className="text-gray-700 hover:text-orange-700">Comment ça marche</a>
           <a href="#avantages" className="text-gray-700 hover:text-orange-700">Avantages</a>
           <a href="#temoignages" className="text-gray-700 hover:text-orange-700">Témoignages</a>
+          {user ? (
+            <>
+              <a href="/dashboard" className="text-gray-700 hover:text-orange-700">Dashboard</a>
+              <button className="text-gray-700 hover:text-orange-700" onClick={() => logout()}>
+                Déconnexion
+              </button>
+            </>
+          ) : (
+            <>
+              <a href="/login" className="text-gray-700 hover:text-orange-700">Connexion</a>
+              <a
+                href="/signup"
+                className="bg-orange-700 text-white px-4 py-2 rounded hover:bg-orange-800"
+              >
+                Inscription
+              </a>
+            </>
+          )}
         </nav>
       </header>
 
@@ -103,3 +123,4 @@ export default function LandingPage() {
     </div>
   );
 }
+
