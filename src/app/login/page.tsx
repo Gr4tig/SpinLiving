@@ -1,57 +1,122 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "../../lib/AuthProvider";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Navbar } from '@/components/ui/navbar';
+import { Footer } from '@/components/ui/footer';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
+import Link from 'next/link';
+import { login } from '@/lib/appwrite';
+import { toast } from 'sonner';
 
-export default function LoginPage() {
-  const { login } = useAuth();
+export default function Login() {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     try {
       await login(email, password);
-      router.push("/dashboard");
+      toast.success('Connexion réussie ✅');
+      router.push('/dashboard');
     } catch (err: any) {
-      setError(err.message);
+      toast.error(err.message || "Erreur lors de la connexion");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-6 rounded shadow w-full max-w-sm space-y-4"
-      >
-        <h1 className="text-xl font-bold text-center">Se connecter</h1>
-        {error && <p className="text-red-600">{error}</p>}
-        <input
-          type="email"
-          placeholder="Email"
-          className="border w-full p-2 rounded"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-        <input
-          type="password"
-          placeholder="Mot de passe"
-          className="border w-full p-2 rounded"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        <button
-          type="submit"
-          className="w-full bg-orange-700 text-white p-2 rounded"
-        >
-          Connexion
-        </button>
-      </form>
+    <div className="min-h-screen flex flex-col">
+      <Navbar />
+      <div className="flex-grow container py-16 flex items-center">
+        <div className="w-full max-w-md mx-auto px-4">
+          <Card className="glass-morphism border-white/10">
+            <CardHeader>
+              <CardTitle className="text-2xl text-center">Connexion</CardTitle>
+              <CardDescription className="text-center">
+                Connectez-vous à votre compte Spin Living
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="votre@email.com"
+                      className="pl-10 bg-white/10 border-white/20"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="password">Mot de passe</Label>
+                    <Link href="/forgot-password" className="text-xs text-primary hover:underline">
+                      Mot de passe oublié?
+                    </Link>
+                  </div>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      className="pl-10 pr-10 bg-white/10 border-white/20"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </div>
+                <Button 
+                  type="submit" 
+                  className="w-full"
+                  disabled={loading}
+                >
+                  {loading ? 'Connexion...' : 'Se connecter'}
+                </Button>
+              </form>
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-4">
+              <div className="text-center w-full">
+                <p className="text-sm text-muted-foreground">
+                  Pas encore de compte?{' '}
+                  <Link href="/register" className="text-primary hover:underline">
+                    S'inscrire
+                  </Link>
+                </p>
+              </div>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+      <Footer />
     </div>
   );
 }

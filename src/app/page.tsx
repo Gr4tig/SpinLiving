@@ -1,11 +1,24 @@
+"use client";
+
+
 import { Navbar } from '@/components/ui/navbar';
 import { Footer } from '@/components/ui/footer';
 import { HeroSearch } from '@/components/home/hero-search';
 import { ConceptSection } from '@/components/home/concept-section';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { logout } from '@/lib/appwrite';
 
 const Index = () => {
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/");
+  };
+
+  const router = useRouter();
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -35,6 +48,7 @@ const Index = () => {
             <div>
               <HeroSearch />
             </div>
+
           </div>
         </div>
       </section>
@@ -72,8 +86,12 @@ const Index = () => {
           </div>
         </div>
       </section>
+      
 
       <Footer />
+      <Button onClick={handleLogout} className="bg-primary text-white">
+              Se déconnecter
+            </Button>
     </div>
   );
 };

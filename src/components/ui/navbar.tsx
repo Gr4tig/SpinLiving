@@ -28,18 +28,22 @@ export function Navbar() {
             </Link>
           </div>
           
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-center space-x-4">
-              <Link href="/" className="text-white hover:text-primary/90 px-3 py-2 rounded-md text-sm font-medium flex items-center">
-                <Home className="w-4 h-4 mr-2" />
-                Accueil
-              </Link>
-              <Link href="/search" className="text-white hover:text-primary/90 px-3 py-2 rounded-md text-sm font-medium flex items-center">
-                <Search className="w-4 h-4 mr-2" />
-                Rechercher
-              </Link>
-              
-            </div>
+          <div className="hidden md:flex items-center space-x-4">
+            <Link href="/" className="text-white hover:text-primary/90 px-3 py-2 rounded-md text-sm font-medium flex items-center">
+              <Home className="w-4 h-4 mr-2" />
+              Accueil
+            </Link>
+            <Link href="/search" className="text-white hover:text-primary/90 px-3 py-2 rounded-md text-sm font-medium flex items-center">
+              <Search className="w-4 h-4 mr-2" />
+              Rechercher
+            </Link>
+            {/* Boutons à droite */}
+            <Link href="/login">
+              <Button variant="ghost" className="ml-2">Se connecter</Button>
+            </Link>
+            <Link href="/signup">
+              <Button className="ml-2">S'inscrire</Button>
+            </Link>
           </div>
           
           <div className="md:hidden">
@@ -61,8 +65,13 @@ export function Navbar() {
               <Search className="w-4 h-4 mr-2" />
               Rechercher
             </Link>
-            
-            
+            {/* Boutons mobile */}
+            <Link href="/login" className="block mt-4" onClick={toggleMenu}>
+              <Button variant="ghost" className="w-full">Se connecter</Button>
+            </Link>
+            <Link href="/signup" className="block mt-2" onClick={toggleMenu}>
+              <Button className="w-full">S'inscrire</Button>
+            </Link>
           </div>
         </div>
       )}
