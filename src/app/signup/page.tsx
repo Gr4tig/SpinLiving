@@ -36,8 +36,44 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Vérifications côté client
+    if (!prenom.trim()) {
+      toast.error("Le prénom est requis.");
+      return;
+    }
+    if (!name.trim()) {
+      toast.error("Le nom est requis.");
+      return;
+    }
+    if (!email.trim()) {
+      toast.error("L'email est requis.");
+      return;
+    }
+    if (!password || password.length < 8) {
+      toast.error("Le mot de passe doit faire au moins 8 caractères.");
+      return;
+    }
+    if (!phone.trim()) {
+      toast.error("Le téléphone est requis.");
+      return;
+    }
+    if (accountType === "locataire") {
+      if (!ville.trim()) {
+        toast.error("La ville est requise pour les locataires.");
+        return;
+      }
+      if (!objectif.trim()) {
+        toast.error("L'objectif est requis pour les locataires.");
+        return;
+      }
+    }
+    if (!photo.trim()) {
+      toast.error("Le lien de la photo est requis.");
+      return;
+    }
+
     setLoading(true);
-    console.log("Form submitted");
     try {
       await register(
         email,
@@ -53,7 +89,6 @@ export default function Register() {
       toast.success('Inscription réussie ✅');
       router.push('/dashboard');
     } catch (err: any) {
-      console.error("Erreur register:", err);
       toast.error(err.message || "Erreur lors de l'inscription");
     } finally {
       setLoading(false);

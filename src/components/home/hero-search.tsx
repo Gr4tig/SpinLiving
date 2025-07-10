@@ -48,16 +48,16 @@ export function HeroSearch() {
       return `${format(dateRange.from, 'dd MMM', { locale: fr })} - ?`;
     }
     
-    return 'Dates';
+    return 'Vos dates';
   };
 
   return (
-    <div className="glass-morphism bg-black/10 rounded-2xl p-4 sm:p-6 max-w-3xl w-full mx-auto">
+    <div className="glass-morphism backdrop-blur-xl bg-secondary/50 border-white/30 border-1 rounded-4xl pt-56 sm:p-5 max-w-5xl w-full mx-auto">
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1">
           <Input
-            placeholder="Ville"
-            className="w-full bg-white/10 border-white/20"
+            placeholder="Rechercher une ville"
+            className="w-full rounded-2xl p-7 bg-white border-primary text-secondary placeholder:text-sm"
             value={city}
             onChange={(e) => setCity(e.target.value)}
           />
@@ -67,7 +67,7 @@ export function HeroSearch() {
           <PopoverTrigger asChild>
             <Button 
               variant="outline" 
-              className="w-full sm:w-auto flex justify-between items-center gap-2 bg-white/10 border-white/20"
+              className="w-full p-7 text-sm rounded-2xl text-secondary sm:w-auto flex justify-between items-center gap-2 bg-white border-primary"
             >
               <CalendarIcon className="h-4 w-4" />
               <span>{formatDateDisplay()}</span>
@@ -90,7 +90,7 @@ export function HeroSearch() {
           </PopoverContent>
         </Popover>
         
-        <Button onClick={handleSearch} className="sm:w-auto bg-primary">
+        <Button onClick={handleSearch} className="sm:w-auto p-7 rounded-2xl bg-primary">
           <Search className="h-4 w-4 mr-2" />
           Rechercher
         </Button>
