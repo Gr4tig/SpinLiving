@@ -1,34 +1,23 @@
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../../lib/AuthProvider";
+import { Button } from "@/components/ui/button";
+import { logout } from "@/lib/appwrite";
 
 export default function DashboardPage() {
-  const { user, logout } = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (user === null) {
-      router.replace("/login");
-    }
-  }, [user, router]);
-
-  if (!user) {
-    return null;
-  }
+  const handleLogout = async () => {
+    await logout();
+    router.push("/");
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
-      <h1 className="text-2xl font-bold">Bienvenue {user.name}</h1>
-      <button
-        className="bg-orange-700 text-white px-4 py-2 rounded"
-        onClick={() => {
-          logout().then(() => router.push("/"));
-        }}
-      >
+      <p className="text-gray-600">Vous êtes connecté à votre tableau de bord.</p>
+      <Button onClick={handleLogout} className="bg-primary text-white">
         Se déconnecter
-      </button>
+      </Button>
     </div>
   );
 }

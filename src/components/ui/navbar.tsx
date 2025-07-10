@@ -19,7 +19,7 @@ export function Navbar() {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 glass-morphism">
+    <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl border-2 border-b-white/10 border-t-0 border-l-0 border-r-0 bg-secondary/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
@@ -28,18 +28,18 @@ export function Navbar() {
             </Link>
           </div>
           
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-center space-x-4">
-              <Link href="/" className="text-white hover:text-primary/90 px-3 py-2 rounded-md text-sm font-medium flex items-center">
-                <Home className="w-4 h-4 mr-2" />
-                Accueil
-              </Link>
-              <Link href="/search" className="text-white hover:text-primary/90 px-3 py-2 rounded-md text-sm font-medium flex items-center">
-                <Search className="w-4 h-4 mr-2" />
-                Rechercher
-              </Link>
-              
-            </div>
+          <div className="hidden md:flex items-center space-x-4">
+            <Link href="/proprietaire" className="text-white hover:text-primary/90 px-3 py-2 rounded-md text-sm font-medium flex items-center">
+              <Home className="w-4 h-4 mr-2" />
+              Je suis proprietaire
+            </Link>
+            {/* Boutons à droite */}
+            <Link href="/login">
+              <Button variant="secondary" className="ml-2">Se connecter</Button>
+            </Link>
+            <Link href="/signup">
+              <Button variant="default" className="ml-2">S'inscrire</Button>
+            </Link>
           </div>
           
           <div className="md:hidden">
@@ -61,8 +61,13 @@ export function Navbar() {
               <Search className="w-4 h-4 mr-2" />
               Rechercher
             </Link>
-            
-            
+            {/* Boutons mobile */}
+            <Link href="/login" className="block mt-4" onClick={toggleMenu}>
+              <Button variant="ghost" className="w-full">Se connecter</Button>
+            </Link>
+            <Link href="/signup" className="block mt-2" onClick={toggleMenu}>
+              <Button className="w-full">S'inscrire</Button>
+            </Link>
           </div>
         </div>
       )}

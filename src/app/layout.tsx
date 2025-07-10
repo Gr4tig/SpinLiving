@@ -19,7 +19,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           rel="stylesheet"
         />
       </head>
-      <body className="bg-[#FAFAFB] font-[Inter] text-sm text-[#56565C] min-h-screen">
+      <body className="bg-[#010101] font-[Inter] text-sm text-[#FFF] min-h-screen">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
