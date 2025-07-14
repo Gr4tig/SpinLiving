@@ -1,38 +1,49 @@
 "use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Navbar } from '@/components/ui/navbar';
-import { Footer } from '@/components/ui/footer';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
-import Link from 'next/link';
-import { login } from '@/lib/appwrite';
-import { toast } from 'sonner';
+import { useState, useEffect } from "react";
+import { useAuth } from "@/lib/AuthProvider";
+import { useRouter } from "next/navigation";
+import { Navbar } from "@/components/ui/navbar";
+import { Footer } from "@/components/ui/footer";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import Link from "next/link";
+import { toast } from "sonner";
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
+
+  const { user, login } = useAuth();
   const router = useRouter();
+
+  useEffect(() => {
+    if (user) {
+      router.push("/dashboard");
+    }
+  }, [user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setFormLoading(true);
     try {
       await login(email, password);
-      toast.success('Connexion réussie ✅');
-      router.push('/dashboard');
+      toast.success("Connexion réussie ✅");
     } catch (err: any) {
-      toast.error(err.message || "Erreur lors de la connexion");
+      toast.error(err?.message || "Email ou mot de passe incorrect.");
     } finally {
-      setLoading(false);
+      setFormLoading(false);
     }
   };
+
+  if (user) {
+    return <div className="min-h-screen flex items-center justify-center">Chargement...</div>;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -97,16 +108,16 @@ export default function Login() {
                 <Button 
                   type="submit" 
                   className="w-full"
-                  disabled={loading}
+                  disabled={formLoading}
                 >
-                  {loading ? 'Connexion...' : 'Se connecter'}
+                  {formLoading ? "Connexion..." : "Se connecter"}
                 </Button>
               </form>
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
               <div className="text-center w-full">
                 <p className="text-sm text-muted-foreground">
-                  Pas encore de compte?{' '}
+                  Pas encore de compte?{" "}
                   <Link href="/register" className="text-primary hover:underline">
                     S'inscrire
                   </Link>

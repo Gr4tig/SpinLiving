@@ -129,7 +129,7 @@ const Proprietaire = () => {
           </span>
           }
           title="Recevez des locataires vérifiés"
-          text="Vous voulez tester Spin Living un mois puis arrêter, ou l’utiliser de temps en temps si il vous manque un colocataire, c’est comme vous le voulez."
+          text="Choisissez vous même vos colocataires en fonction de vos besoins"
         />    
         </div>
         </section>

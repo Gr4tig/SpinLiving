@@ -36,45 +36,58 @@ export default function Register() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+  
+    console.log("Tentative d'inscription avec :", {
+      email, password, name, prenom, phone, ville, objectif, photo, accountType
+    });
+  
     // Vérifications côté client
     if (!prenom.trim()) {
       toast.error("Le prénom est requis.");
+      console.log("Erreur : prénom manquant");
       return;
     }
     if (!name.trim()) {
       toast.error("Le nom est requis.");
+      console.log("Erreur : nom manquant");
       return;
     }
     if (!email.trim()) {
       toast.error("L'email est requis.");
+      console.log("Erreur : email manquant");
       return;
     }
     if (!password || password.length < 8) {
       toast.error("Le mot de passe doit faire au moins 8 caractères.");
+      console.log("Erreur : mot de passe trop court");
       return;
     }
     if (!phone.trim()) {
       toast.error("Le téléphone est requis.");
+      console.log("Erreur : téléphone manquant");
       return;
     }
     if (accountType === "locataire") {
       if (!ville.trim()) {
         toast.error("La ville est requise pour les locataires.");
+        console.log("Erreur : ville manquante");
         return;
       }
       if (!objectif.trim()) {
         toast.error("L'objectif est requis pour les locataires.");
+        console.log("Erreur : objectif manquant");
         return;
       }
     }
     if (!photo.trim()) {
       toast.error("Le lien de la photo est requis.");
+      console.log("Erreur : photo manquante");
       return;
     }
-
+  
     setLoading(true);
     try {
+      console.log("Appel à register...");
       await register(
         email,
         password,
@@ -87,14 +100,15 @@ export default function Register() {
         accountType
       );
       toast.success('Inscription réussie ✅');
+      console.log("Inscription réussie !");
       router.push('/dashboard');
     } catch (err: any) {
       toast.error(err.message || "Erreur lors de l'inscription");
+      console.error("Erreur lors de l'inscription :", err);
     } finally {
       setLoading(false);
     }
   };
-
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />

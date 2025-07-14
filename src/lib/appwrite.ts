@@ -38,14 +38,20 @@ export async function register(
   const MIN_PASSWORD_LENGTH = 8;
 
   try {
+    console.log("[register] Début de la fonction", { email, accountType });
+
     if (!email || !password || password.length < MIN_PASSWORD_LENGTH) {
+      console.error("[register] Email ou mot de passe invalide");
       throw new Error('Email ou mot de passe invalide (min 8 caractères)');
     }
 
     const userId = ID.unique();
+    console.log("[register] userId généré :", userId);
 
     // Création du compte utilisateur
+    console.log("[register] Création du compte utilisateur...");
     await account.create(userId, email, password, `${prenom} ${name}`);
+    console.log("[register] Compte utilisateur créé");
 
     // Attendre un court instant pour s'assurer que le compte est bien créé
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -62,17 +68,24 @@ export async function register(
       data = { nom: name, prenom, tel, photo, userid: userId };
     }
 
+    console.log("[register] Données du document à créer :", { collectionId, data });
+
     await databases.createDocument(
       process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
       collectionId,
       ID.unique(),
       data
     );
+    console.log("[register] Document créé dans la collection", collectionId);
 
     // Création de la session
+    console.log("[register] Création de la session...");
     const session = await account.createEmailPasswordSession(email, password);
+    console.log("[register] Session créée avec succès");
+
     return session;
   } catch (err: any) {
+    console.error("[register] Erreur attrapée :", err);
     throw err;
   }
 }
