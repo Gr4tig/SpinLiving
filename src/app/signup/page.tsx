@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import Link from 'next/link';
 import { Mail, Lock, User, Phone, Image as ImageIcon, MapPin } from 'lucide-react';
-import { register } from '@/lib/appwrite';
+import { register, uploadProfilePhoto } from '@/lib/appwrite';
 import { toast } from 'sonner';
 
 const objectifs = [
@@ -30,64 +30,39 @@ export default function Register() {
   const [phone, setPhone] = useState('');
   const [ville, setVille] = useState('');
   const [objectif, setObjectif] = useState('');
-  const [photo, setPhoto] = useState('');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setPhotoFile(e.target.files[0]);
+      setPhotoPreview(URL.createObjectURL(e.target.files[0]));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-  
-    console.log("Tentative d'inscription avec :", {
-      email, password, name, prenom, phone, ville, objectif, photo, accountType
-    });
-  
-    // Vérifications côté client
-    if (!prenom.trim()) {
-      toast.error("Le prénom est requis.");
-      console.log("Erreur : prénom manquant");
-      return;
-    }
-    if (!name.trim()) {
-      toast.error("Le nom est requis.");
-      console.log("Erreur : nom manquant");
-      return;
-    }
-    if (!email.trim()) {
-      toast.error("L'email est requis.");
-      console.log("Erreur : email manquant");
-      return;
-    }
-    if (!password || password.length < 8) {
-      toast.error("Le mot de passe doit faire au moins 8 caractères.");
-      console.log("Erreur : mot de passe trop court");
-      return;
-    }
-    if (!phone.trim()) {
-      toast.error("Le téléphone est requis.");
-      console.log("Erreur : téléphone manquant");
-      return;
-    }
+
+    // Validation
+    if (!prenom.trim()) return toast.error("Le prénom est requis.");
+    if (!name.trim()) return toast.error("Le nom est requis.");
+    if (!email.trim()) return toast.error("L'email est requis.");
+    if (!password || password.length < 8) return toast.error("Le mot de passe doit faire au moins 8 caractères.");
+    if (!phone.trim()) return toast.error("Le téléphone est requis.");
     if (accountType === "locataire") {
-      if (!ville.trim()) {
-        toast.error("La ville est requise pour les locataires.");
-        console.log("Erreur : ville manquante");
-        return;
-      }
-      if (!objectif.trim()) {
-        toast.error("L'objectif est requis pour les locataires.");
-        console.log("Erreur : objectif manquant");
-        return;
-      }
+      if (!ville.trim()) return toast.error("La ville est requise pour les locataires.");
+      if (!objectif.trim()) return toast.error("L'objectif est requis pour les locataires.");
     }
-    if (!photo.trim()) {
-      toast.error("Le lien de la photo est requis.");
-      console.log("Erreur : photo manquante");
-      return;
-    }
-  
+    if (!photoFile) return toast.error("La photo est requise.");
+
     setLoading(true);
     try {
-      console.log("Appel à register...");
+      // 1. Upload photo dans Appwrite bucket
+      const photoUrl = await uploadProfilePhoto(photoFile);
+
+      // 2. Appel à register (adapte la signature si besoin)
       await register(
         email,
         password,
@@ -96,19 +71,18 @@ export default function Register() {
         phone,
         ville,
         objectif,
-        photo,
+        photoUrl,
         accountType
       );
       toast.success('Inscription réussie ✅');
-      console.log("Inscription réussie !");
-      router.push('/dashboard');
+      router.push('/logement/recherche');
     } catch (err: any) {
       toast.error(err.message || "Erreur lors de l'inscription");
-      console.error("Erreur lors de l'inscription :", err);
     } finally {
       setLoading(false);
     }
   };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
@@ -260,22 +234,31 @@ export default function Register() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="photo">Photo (URL)</Label>
-                <div className="relative">
-                  <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Label htmlFor="photo">Photo de profil</Label>
+                <div className="flex items-center gap-4">
                   <Input
                     id="photo"
-                    placeholder="Lien vers votre photo"
-                    className="pl-10 bg-white/10 border-white/20"
-                    value={photo}
-                    onChange={(e) => setPhoto(e.target.value)}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoChange}
+                    className="bg-white/10 border-white/20"
                   />
+                  {photoPreview && (
+                    <img
+                      src={photoPreview}
+                      alt="Aperçu de la photo"
+                      className="w-16 h-16 rounded-full object-cover border"
+                    />
+                  )}
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Ajoutez une photo de vous (jpeg, png…)
+                </p>
               </div>
 
-              <button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Inscription en cours..." : "S'inscrire"}
-              </button>
+              </Button>
 
               <p className="text-xs text-center text-muted-foreground">
                 En vous inscrivant, vous acceptez nos{" "}
@@ -303,22 +286,4 @@ export default function Register() {
       <Footer />
     </div>
   );
-};
-
-const Home = (props: React.SVGAttributes<SVGElement>) => (
-  <svg
-    {...props}
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-    <polyline points="9 22 9 12 15 12 15 22" />
-  </svg>
-);
+}

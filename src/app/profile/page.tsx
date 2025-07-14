@@ -12,6 +12,7 @@ import { motion } from "framer-motion";
 import { User, Edit, Home, Plus, List, Search } from "lucide-react";
 import { useAuth } from "@/lib/AuthProvider";
 import { useEffect } from "react";
+import MesAnnonces from "@/components/ui/mes-annonces";
 
 export default function Profile() {
   const { user, profile, isOwner, logout, loading } = useAuth();
@@ -47,10 +48,10 @@ export default function Profile() {
           transition={{ duration: 0.5 }}
         >
           <div className="max-w-4xl mx-auto">
-            <div className="flex flex-col md:flex-row gap-8">
+            <div className="flex flex-col md:flex-row gap-8 mt-10">
               {/* Sidebar */}
               <div className="w-full md:w-1/3">
-                <Card className="glass-morphism">
+                <Card className="bg-white/5 rounded-lg border border-white/10 ">
                   <CardHeader className="flex flex-col items-center">
                     <Avatar className="h-24 w-24 mb-4">
                       <AvatarImage src={profile.photo || ""} />
@@ -83,7 +84,7 @@ export default function Profile() {
                       {isOwner && (
                         <>
                           <Button variant="outline" className="w-full justify-start" asChild>
-                            <Link href="/listing/create">
+                            <Link href="/logement/creation">
                               <Plus className="mr-2 h-4 w-4" />
                               Créer une annonce
                             </Link>
@@ -122,7 +123,7 @@ export default function Profile() {
 
               {/* Main Content */}
               <div className="w-full md:w-2/3">
-                <Card className="glass-morphism">
+                <Card className="bg-white/5 rounded-lg border border-white/10">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-2xl">Information du profil</CardTitle>
@@ -169,12 +170,22 @@ export default function Profile() {
 
                 {isOwner ? (
                   <Tabs defaultValue="listings" className="mt-8">
-                    <TabsList className="glass-morphism grid w-full grid-cols-2">
-                      <TabsTrigger value="listings">Mes annonces</TabsTrigger>
-                      <TabsTrigger value="requests">Demandes reçues</TabsTrigger>
+                    <TabsList className="bg-white/5 rounded-lg border border-white/10 grid w-full grid-cols-2 gap-4">
+                    <TabsTrigger
+                        value="listings"
+                        className="focus:bg-secondary data-[state=active]:bg-secondary data-[state=active]:text-white rounded"
+                    >
+                        Mes annonces
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="requests"
+                        className="focus:bg-secondary data-[state=active]:bg-secondary data-[state=active]:text-white rounded"
+                    >
+                        Demandes reçues
+                    </TabsTrigger>
                     </TabsList>
                     <TabsContent value="listings" className="mt-4">
-                      <Card className="glass-morphism">
+                      <Card className="bg-white/5 rounded-lg border border-white/10 ">
                         <CardHeader>
                           <CardTitle>Vos annonces</CardTitle>
                           <CardDescription>
@@ -188,7 +199,7 @@ export default function Profile() {
                               Voir toutes mes annonces
                             </Button>
                           </Link>
-                          <Link href="/listing/create" className="block">
+                          <Link href="/logement/creation" className="block">
                             <Button variant="outline" className="w-full">
                               <Plus className="mr-2 h-4 w-4" />
                               Créer une nouvelle annonce
@@ -198,7 +209,7 @@ export default function Profile() {
                       </Card>
                     </TabsContent>
                     <TabsContent value="requests" className="mt-4">
-                      <Card className="glass-morphism">
+                      <Card className="bg-white/5 rounded-lg border border-white/10">
                         <CardHeader>
                           <CardTitle>Demandes de contact</CardTitle>
                           <CardDescription>
@@ -214,7 +225,7 @@ export default function Profile() {
                     </TabsContent>
                   </Tabs>
                 ) : (
-                  <Card className="mt-8 glass-morphism">
+                  <Card className="mt-8 bg-white/5 rounded-lg border border-white/10 ">
                     <CardHeader>
                       <CardTitle>Recherche de logements</CardTitle>
                       <CardDescription>
@@ -225,7 +236,7 @@ export default function Profile() {
                       <p className="text-muted-foreground">
                         En tant que locataire, vous pouvez rechercher des logements disponibles et contacter les propriétaires.
                       </p>
-                      <Link href="/search" className="block">
+                      <Link href="/logement/recherche" className="block">
                         <Button className="w-full">
                           <Search className="mr-2 h-4 w-4" />
                           Rechercher un logement

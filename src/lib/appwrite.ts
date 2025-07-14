@@ -1,7 +1,7 @@
-import { Client, Account, Databases, Models, ID } from "appwrite";
+import { Client, Account, Databases, Models, ID, Storage, Query } from "appwrite";
 
+// --- INIT CLIENT ---
 const client = new Client();
-
 
 if (process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT) {
   client.setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT);
@@ -21,9 +21,60 @@ if (process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID) {
 
 const account = new Account(client);
 const databases = new Databases(client);
+const storage = new Storage(client);
 
-export { client, account, databases };
+export { client, account, databases, storage };
 
+// --- ENV HELPERS ---
+export const APPWRITE_DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!;
+export const APPWRITE_COLLECTION_LOGEMENT_ID = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_LOGEMENT_ID!;
+export const APPWRITE_BUCKET_PHOTOSAPPART_ID = process.env.NEXT_PUBLIC_APPWRITE_BUCKET_PHOTOSAPPART_ID!;
+
+// --- TYPES ---
+export type LogementData = {
+  proprio: string; // userId
+  titre: string;
+  description: string;
+  adresse: string;
+  nombreColoc: number;
+  m2?: number;
+  equipement?: "wifi" | "cuisine" | "machine";
+  datedispo: string; // ISO date
+  photo1?: string;
+  photo2?: string;
+};
+
+// --- HELPERS ---
+
+/** Récupérer l'utilisateur connecté (proprio) */
+export async function getCurrentUserId(): Promise<string | null> {
+  try {
+    const user = await account.get();
+    return user.$id;
+  } catch {
+    return null;
+  }
+}
+
+/** Upload une image sur Appwrite Storage, retourne son URL publique */
+export async function uploadLogementImage(file: File): Promise<string> {
+  const fileId = ID.unique();
+  const uploaded = await storage.createFile(APPWRITE_BUCKET_PHOTOSAPPART_ID, fileId, file);
+  // Attention : le bucket doit être public pour cette URL !
+  return storage.getFileView(APPWRITE_BUCKET_PHOTOSAPPART_ID, uploaded.$id);
+}
+
+/** Créer un logement dans la collection Appwrite */
+export async function createLogement(data: LogementData) {
+  return databases.createDocument(
+    APPWRITE_DATABASE_ID,
+    APPWRITE_COLLECTION_LOGEMENT_ID,
+    ID.unique(),
+    data
+  );
+}
+
+// --- AUTH & INSCRIPTION (inchangés, juste déplacés) ---
 export async function register(
   email: string,
   password: string,
@@ -129,3 +180,20 @@ export async function logout(): Promise<void> {
   }
 }
 
+// Fonction pour trouver l'ID du document proprio lié à l'utilisateur courant
+export async function getProprioDocIdByUserId(userId: string): Promise<string | null> {
+  const collectionProprio = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_PROPRIO_ID!;
+  const dbId = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!;
+  const result = await databases.listDocuments(dbId, collectionProprio, [
+    Query.equal("userid", [userId]),
+  ]);
+  return result.documents[0]?.$id ?? null;
+}
+
+export async function uploadProfilePhoto(file: File): Promise<string> {
+  const bucketId = process.env.NEXT_PUBLIC_APPWRITE_BUCKET_PHOTOS_ID!;
+  const res = await storage.createFile(bucketId, ID.unique(), file);
+  // URL d’accès public ou preview (selon config bucket)
+  // Pour un accès sécurisé, il faut générer une URL de preview, sinon utilise getFileView
+  return storage.getFileView(bucketId, res.$id);
+}

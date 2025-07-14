@@ -46,7 +46,7 @@ const Proprietaire = () => {
             </p>
             <div>
             <Button className='px-10 py-7 text-lg text-base rounded-xl'>
-                <Link href="/dashboard">Mettre mon appartement en ligne</Link>
+                <Link href="/logement/recherche">Mettre mon appartement en ligne</Link>
             </Button>
             </div>
 
