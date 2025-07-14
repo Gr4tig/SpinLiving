@@ -36,7 +36,7 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <Link href="/search" className="text-muted-foreground hover:text-primary">
+                <Link href="/logement/recherche" className="text-muted-foreground hover:text-primary">
                   Rechercher un logement
                 </Link>
               </li>

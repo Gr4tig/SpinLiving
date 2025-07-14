@@ -46,7 +46,7 @@ const Proprietaire = () => {
             </p>
             <div>
             <Button className='px-10 py-7 text-lg text-base rounded-xl'>
-                <Link href="/dashboard">Mettre mon appartement en ligne</Link>
+                <Link href="/logement/recherche">Mettre mon appartement en ligne</Link>
             </Button>
             </div>
 
@@ -129,7 +129,7 @@ const Proprietaire = () => {
           </span>
           }
           title="Recevez des locataires vérifiés"
-          text="Vous voulez tester Spin Living un mois puis arrêter, ou l’utiliser de temps en temps si il vous manque un colocataire, c’est comme vous le voulez."
+          text="Choisissez vous même vos colocataires en fonction de vos besoins"
         />    
         </div>
         </section>

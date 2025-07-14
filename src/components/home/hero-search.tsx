@@ -36,7 +36,7 @@ export function HeroSearch() {
       params.append('to', dateRange.to.toISOString());
     }
     
-    router.push(`/search?${params.toString()}`);
+    router.push(`/logement/recherche?${params.toString()}`);
   };
 
   const formatDateDisplay = () => {

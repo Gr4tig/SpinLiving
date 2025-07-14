@@ -86,7 +86,7 @@ const Index = () => {
         </div>
         <div className="text-center mt-12">
         <Button className='px-10 py-7 text-lg text-base rounded-xl'>
-          <Link href="/dashboard">Découvrir</Link>
+          <Link href="/logement/recherche">Découvrir</Link>
         </Button>
         </div>
       </section>
@@ -173,7 +173,7 @@ const Index = () => {
         </div>
         <div className="text-center mt-12">
         <Button className='px-10 py-7 text-lg text-base rounded-xl'>
-          <Link href="/dashboard">Recherchez votre Spin</Link>
+          <Link href="/logement/recherche">Recherchez votre Spin</Link>
         </Button>
         </div>
       </section>
