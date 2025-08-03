@@ -65,28 +65,16 @@ export function HeroSearch() {
         
         <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
           <PopoverTrigger asChild>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="w-full p-7 text-sm rounded-2xl text-secondary sm:w-auto flex justify-between items-center gap-2 bg-white border-primary"
             >
               <CalendarIcon className="h-4 w-4" />
               <span>{formatDateDisplay()}</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 bg-background border-white/10" align="start">
-            <Calendar
-              initialFocus
-              mode="range"
-              defaultMonth={dateRange.from}
-              selected={dateRange}
-              onSelect={(range) => {
-                setDateRange(range || { from: undefined, to: undefined });
-                if (range?.to) setIsCalendarOpen(false);
-              }}
-              numberOfMonths={2}
-              locale={fr}
-              className="p-3 pointer-events-auto"
-            />
+          <PopoverContent className="w-auto p-0 bg-black border-white/10" align="start">
+            <Calendar dateRange={dateRange} onSelect={setDateRange} />
           </PopoverContent>
         </Popover>
         
