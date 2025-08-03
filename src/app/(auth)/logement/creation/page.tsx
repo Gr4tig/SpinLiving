@@ -339,11 +339,14 @@ export default function CreationLogement() {
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0 bg-background border-white/10" align="start">
                       <Calendar
-                        mode="single"
-                        selected={dateDispo}
-                        onSelect={setDateDispo}
-                        locale={fr}
-                        className="p-3 pointer-events-auto"
+                        dateRange={dateDispo ? { from: dateDispo, to: dateDispo } : undefined}
+                        onSelect={(range) => {
+                          if (range.from) {
+                            setDateDispo(range.from);
+                          } else {
+                            setDateDispo(undefined);
+                          }
+                        }}
                       />
                     </PopoverContent>
                   </Popover>
