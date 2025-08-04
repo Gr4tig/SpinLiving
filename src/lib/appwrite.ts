@@ -1,4 +1,5 @@
 import { Client, Account, Databases, Models, ID, Storage, Query } from "appwrite";
+import { nanoid } from "nanoid"; // Assurez-vous d'installer cette dépendance: npm install nanoid
 
 // --- INIT CLIENT ---
 const client = new Client();
@@ -30,7 +31,10 @@ export const APPWRITE_DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID
 export const APPWRITE_COLLECTION_LOGEMENT_ID = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_LOGEMENT_ID!;
 export const APPWRITE_COLLECTION_ADRESSES_ID = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_ADRESSES_ID!;
 export const APPWRITE_COLLECTION_PHOTOSAPPART_ID = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_PHOTOSAPPART_ID!;
+export const APPWRITE_COLLECTION_PROPRIO_ID = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_PROPRIO_ID!;
 export const APPWRITE_BUCKET_PHOTOSAPPART_ID = process.env.NEXT_PUBLIC_APPWRITE_BUCKET_PHOTOSAPPART_ID!;
+
+export type EquipementType = "wifi" | "cuisine" | "machine" | "parking" | "terrasse" | "climatisation";
 
 // --- TYPES ---
 export type LogementData = {
@@ -39,9 +43,10 @@ export type LogementData = {
   description: string;
   nombreColoc: number;
   m2?: number;
-  equipement?: "wifi" | "cuisine" | "machine";
+  equipement?: EquipementType[];
   datedispo: string; // ISO date
   prix: string;
+  publicId?: string; // Identifiant public pour les URLs
 };
 
 export type AdresseData = {
@@ -60,11 +65,66 @@ export type PhotosAppartData = {
   "5"?: string; // URL photo 5
 };
 
+export type proprioData = {
+  $id: string;
+  $createdAt: string; // Date ISO
+  userid: string;
+  nom: string;
+  prenom: string;
+  photo?: string;
+  tel?: string;
+};
+
 export type LogementCompletData = LogementData & {
   $id: string;
+  publicId: string; // Obligatoire dans le type complet
   adresse?: AdresseData & { $id: string };
   photos?: (PhotosAppartData & { $id: string });
+  proprio?: proprioData;
 };
+
+// Ajouter un mapping pour l'affichage des équipements
+export const equipementMapping: Record<EquipementType, { label: string, icon: string }> = {
+  "wifi": { label: "Wi-Fi", icon: "wifi" },
+  "cuisine": { label: "Cuisine équipée", icon: "utensils" },
+  "machine": { label: "Machine à laver", icon: "washing-machine" },
+  "parking": { label: "Parking", icon: "car" },
+  "terrasse": { label: "Terrasse/Balcon", icon: "sun" },
+  "climatisation": { label: "Climatisation", icon: "snowflake" }
+};
+
+export function formatEquipements(equipements?: EquipementType[]): string {
+  if (!equipements || equipements.length === 0) return "Aucun équipement spécifié";
+  
+  return equipements.map(eq => equipementMapping[eq]?.label || eq).join(", ");
+}
+
+// --- SLUG HELPERS ---
+
+// Fonction pour vérifier si un publicId existe déjà
+async function isPublicIdUnique(publicId: string): Promise<boolean> {
+  const existingLogements = await databases.listDocuments(
+    APPWRITE_DATABASE_ID,
+    APPWRITE_COLLECTION_LOGEMENT_ID,
+    [Query.equal('publicId', publicId)]
+  );
+  
+  return existingLogements.documents.length === 0;
+}
+
+// Fonction pour générer un publicId unique
+async function generateUniquePublicId(): Promise<string> {
+  let publicId = nanoid(10); // 10 caractères = 64^10 possibilités (très peu de risques de collision)
+  let isUnique = await isPublicIdUnique(publicId);
+  
+  // Très peu probable d'entrer dans cette boucle, mais c'est une sécurité
+  while (!isUnique) {
+    publicId = nanoid(10);
+    isUnique = await isPublicIdUnique(publicId);
+  }
+  
+  return publicId;
+}
 
 // --- HELPERS ---
 
@@ -82,7 +142,7 @@ export async function getCurrentUserId(): Promise<string | null> {
 export async function uploadLogementImage(file: File): Promise<string> {
   const fileId = ID.unique();
   const uploaded = await storage.createFile(APPWRITE_BUCKET_PHOTOSAPPART_ID, fileId, file);
-  // Attention : le bucket doit être public pour cette URL !
+  // Attention : le bucket doit être public pour cette URL !
   return storage.getFileView(APPWRITE_BUCKET_PHOTOSAPPART_ID, uploaded.$id);
 }
 
@@ -93,12 +153,18 @@ export async function createLogement(
   photos: {[key: string]: string} // Objet avec les URLs des photos (clés "1", "2", etc.)
 ) {
   try {
-    // 1. Créer le logement principal
+    // Générer un publicId unique pour ce logement
+    const publicId = await generateUniquePublicId();
+    
+    // 1. Créer le logement principal avec le publicId
     const logement = await databases.createDocument(
       APPWRITE_DATABASE_ID,
       APPWRITE_COLLECTION_LOGEMENT_ID,
       ID.unique(),
-      logementData
+      {
+        ...logementData,
+        publicId // Ajouter le publicId au document
+      }
     );
 
     // 2. Créer l'adresse associée
@@ -136,7 +202,7 @@ export async function createLogement(
   }
 }
 
-/** Récupérer un logement avec son adresse et ses photos */
+/** Récupérer un logement avec son adresse, ses photos et le propriétaire */
 export async function getLogementComplet(logementId: string): Promise<LogementCompletData | null> {
   try {
     // 1. Récupérer le logement
@@ -144,8 +210,8 @@ export async function getLogementComplet(logementId: string): Promise<LogementCo
       APPWRITE_DATABASE_ID,
       APPWRITE_COLLECTION_LOGEMENT_ID,
       logementId
-    );
-
+    ) as unknown as Models.Document;
+    
     // 2. Récupérer l'adresse associée
     const adresses = await databases.listDocuments(
       APPWRITE_DATABASE_ID,
@@ -153,7 +219,15 @@ export async function getLogementComplet(logementId: string): Promise<LogementCo
       [Query.equal('logement', logementId)]
     );
     
-    const adresse = adresses.documents.length > 0 ? adresses.documents[0] : undefined;
+    // Utiliser une conversion de type sécurisée pour adresse
+    const adresseDoc = adresses.documents.length > 0 ? adresses.documents[0] : undefined;
+    const adresse = adresseDoc ? {
+      $id: adresseDoc.$id,
+      ville: adresseDoc.ville,
+      adresse: adresseDoc.adresse,
+      code_postal: adresseDoc.code_postal,
+      logement: adresseDoc.logement
+    } : undefined;
 
     // 3. Récupérer les photos associées
     const photosDocs = await databases.listDocuments(
@@ -162,15 +236,85 @@ export async function getLogementComplet(logementId: string): Promise<LogementCo
       [Query.equal('logement', logementId)]
     );
     
-    const photos = photosDocs.documents.length > 0 ? photosDocs.documents[0] : undefined;
+    // Conversion de type sécurisée pour les photos
+    const photosDoc = photosDocs.documents.length > 0 ? photosDocs.documents[0] : undefined;
+    const photos = photosDoc ? {
+      $id: photosDoc.$id,
+      logement: photosDoc.logement,
+      "1": photosDoc["1"],
+      "2": photosDoc["2"],
+      "3": photosDoc["3"],
+      "4": photosDoc["4"],
+      "5": photosDoc["5"]
+    } : undefined;
 
-    return {
-      ...logement,
+    // 4. Récupérer les informations du propriétaire si l'ID est disponible et valide
+    let proprio = undefined;
+    if (logement.proprio && typeof logement.proprio === 'string') {
+      try {
+        const proprioDoc = await databases.getDocument(
+          APPWRITE_DATABASE_ID,
+          APPWRITE_COLLECTION_PROPRIO_ID,
+          logement.proprio
+        ) as unknown as Models.Document;
+        
+        // Conversion de type sécurisée
+        proprio = {
+          $id: proprioDoc.$id,
+          $createdAt: proprioDoc.$createdAt,
+          userid: proprioDoc.userid,
+          nom: proprioDoc.nom,
+          prenom: proprioDoc.prenom,
+          tel: proprioDoc.tel,
+          photo: proprioDoc.photo
+        };
+      } catch (error) {
+        console.error("Erreur lors de la récupération du propriétaire:", error);
+      }
+    }
+
+    // Construire l'objet complet avec le typage correct
+    const result: LogementCompletData = {
+      $id: logement.$id,
+      proprio: logement.proprio,
+      titre: logement.titre,
+      description: logement.description,
+      nombreColoc: logement.nombreColoc,
+      m2: logement.m2,
+      equipement: logement.equipement,
+      datedispo: logement.datedispo,
+      prix: logement.prix,
+      publicId: logement.publicId || 'no-slug', // Fallback si pas de publicId
       adresse,
-      photos
-    } as unknown as LogementCompletData;
+      photos,
+    };
+
+    return result;
   } catch (error) {
     console.error('❌ Erreur lors de la récupération du logement complet', error);
+    return null;
+  }
+}
+
+/** Récupérer un logement par son publicId (slug) */
+export async function getLogementByPublicId(publicId: string): Promise<LogementCompletData | null> {
+  try {
+    // Rechercher le logement par publicId
+    const logements = await databases.listDocuments(
+      APPWRITE_DATABASE_ID,
+      APPWRITE_COLLECTION_LOGEMENT_ID,
+      [Query.equal('publicId', publicId)]
+    );
+    
+    if (logements.documents.length === 0) {
+      console.error(`Aucun logement trouvé avec le publicId: ${publicId}`);
+      return null;
+    }
+    
+    // Utiliser l'ID interne pour récupérer les données complètes
+    return getLogementComplet(logements.documents[0].$id);
+  } catch (error) {
+    console.error(`❌ Erreur lors de la récupération du logement par publicId ${publicId}:`, error);
     return null;
   }
 }
@@ -268,7 +412,42 @@ export async function rechercherLogements(filtres: {
   }
 }
 
-// --- AUTH & INSCRIPTION (inchangés) ---
+/** Créer des publicIds pour les logements existants qui n'en ont pas encore */
+export async function migrateLogementToPublicIds(): Promise<void> {
+  try {
+    // Récupérer tous les logements qui n'ont pas encore de publicId
+    const logementsToUpdate = await databases.listDocuments(
+      APPWRITE_DATABASE_ID,
+      APPWRITE_COLLECTION_LOGEMENT_ID,
+      [Query.isNull('publicId')]
+    );
+    
+    console.log(`${logementsToUpdate.documents.length} logements à mettre à jour avec des publicIds...`);
+    
+    for (const logement of logementsToUpdate.documents) {
+      // Générer un nouveau publicId unique pour ce logement
+      const publicId = await generateUniquePublicId();
+      
+      // Mettre à jour le document avec ce publicId
+      await databases.updateDocument(
+        APPWRITE_DATABASE_ID,
+        APPWRITE_COLLECTION_LOGEMENT_ID,
+        logement.$id,
+        { publicId }
+      );
+      
+      console.log(`Logement ${logement.$id} mis à jour avec publicId: ${publicId}`);
+    }
+    
+    console.log('Migration des publicIds terminée avec succès!');
+  } catch (error) {
+    console.error('❌ Erreur lors de la migration des publicIds:', error);
+    throw error;
+  }
+}
+
+// --- AUTH & INSCRIPTION ---
+// Reste du code inchangé...
 export async function register(
   email: string,
   password: string,
@@ -278,7 +457,7 @@ export async function register(
   ville: string,
   objectif: string,
   photo: string,
-  accountType: "locataire" | "proprietaire"
+  accountType: "locataire" | "proprio"
 ): Promise<Models.Session> {
   const MIN_PASSWORD_LENGTH = 8;
 
@@ -387,7 +566,7 @@ export async function getProprioDocIdByUserId(userId: string): Promise<string | 
 export async function uploadProfilePhoto(file: File): Promise<string> {
   const bucketId = process.env.NEXT_PUBLIC_APPWRITE_BUCKET_PHOTOS_ID!;
   const res = await storage.createFile(bucketId, ID.unique(), file);
-  // URL d’accès public ou preview (selon config bucket)
+  // URL d'accès public ou preview (selon config bucket)
   // Pour un accès sécurisé, il faut générer une URL de preview, sinon utilise getFileView
   return storage.getFileView(bucketId, res.$id);
 }

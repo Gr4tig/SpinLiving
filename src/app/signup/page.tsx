@@ -22,7 +22,7 @@ const objectifs = [
 ];
 
 export default function Register() {
-  const [accountType, setAccountType] = useState<'locataire' | 'proprietaire'>('locataire');
+  const [accountType, setAccountType] = useState<'locataire' | 'proprio'>('locataire');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -97,7 +97,7 @@ export default function Register() {
                 <Label>Type de compte</Label>
                 <RadioGroup
                   value={accountType}
-                  onValueChange={v => setAccountType(v as 'locataire' | 'proprietaire')}
+                  onValueChange={v => setAccountType(v as 'locataire' | 'proprio')}
                   className="flex flex-col sm:flex-row gap-4"
                 >
                   <div className={`flex-1 glass-morphism rounded-lg p-4 cursor-pointer transition-all ${accountType === 'locataire' ? 'ring-2 ring-primary' : 'opacity-80 hover:opacity-100'}`}>
@@ -108,9 +108,9 @@ export default function Register() {
                       <span className="text-sm text-muted-foreground">Je cherche un logement</span>
                     </Label>
                   </div>
-                  <div className={`flex-1 glass-morphism rounded-lg p-4 cursor-pointer transition-all ${accountType === 'proprietaire' ? 'ring-2 ring-primary' : 'opacity-80 hover:opacity-100'}`}>
-                    <RadioGroupItem value="proprietaire" id="proprietaire" className="sr-only" />
-                    <Label htmlFor="proprietaire" className="flex flex-col items-center cursor-pointer">
+                  <div className={`flex-1 glass-morphism rounded-lg p-4 cursor-pointer transition-all ${accountType === 'proprio' ? 'ring-2 ring-primary' : 'opacity-80 hover:opacity-100'}`}>
+                    <RadioGroupItem value="proprio" id="proprio" className="sr-only" />
+                    <Label htmlFor="proprio" className="flex flex-col items-center cursor-pointer">
                       <User className="h-6 w-6 mb-2 text-primary" />
                       <span className="font-medium">Propriétaire</span>
                       <span className="text-sm text-muted-foreground">Je propose un logement</span>
