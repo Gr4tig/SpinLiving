@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Mail, Phone, MapPin, Instagram, Facebook, Twitter } from 'lucide-react';
-import { use } from 'react';
+
 
 export function Footer() {
   return (

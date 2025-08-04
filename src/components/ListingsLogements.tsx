@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { databases } from "@/lib/appwrite";
+import { databases, getLogementComplet, LogementCompletData } from "@/lib/appwrite";
 import { LogementCard } from "@/components/LogementCard";
 import { Card } from "@/components/ui/card";
 
@@ -9,16 +9,27 @@ const DB_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!;
 const COLLECTION_LOGEMENT_ID = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_LOGEMENT_ID!;
 
 export function ListingsLogements() {
-  const [logements, setLogements] = useState<any[]>([]);
+  const [logements, setLogements] = useState<LogementCompletData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchLogements() {
       setLoading(true);
       try {
+        // 1. Récupérer les documents de logement de base
         const res = await databases.listDocuments(DB_ID, COLLECTION_LOGEMENT_ID, []);
-        setLogements(res.documents);
+        
+        // 2. Pour chaque logement, récupérer ses données complètes (adresse + photos)
+        const logementsComplets = await Promise.all(
+          res.documents.map(async (logement) => {
+            return await getLogementComplet(logement.$id) || null;
+          })
+        );
+        
+        // 3. Filtrer les résultats null
+        setLogements(logementsComplets.filter(Boolean) as LogementCompletData[]);
       } catch (e) {
+        console.error("Erreur lors du chargement des logements:", e);
         setLogements([]);
       } finally {
         setLoading(false);
@@ -34,7 +45,7 @@ export function ListingsLogements() {
       {!loading && logements.length === 0 && (
         <Card className="p-6 text-center text-gray-500">Aucun logement trouvé.</Card>
       )}
-      <div className="grid grid-cols-3 md:grid-cols-3 gap-6 items-center justify-center">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 items-center justify-center">
         {logements.map((logement) => (
           <LogementCard key={logement.$id} logement={logement} />
         ))}

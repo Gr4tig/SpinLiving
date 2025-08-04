@@ -39,7 +39,6 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
 
       <div className="flex-grow container py-16 px-4 sm:px-6 lg:px-8">
         <motion.div

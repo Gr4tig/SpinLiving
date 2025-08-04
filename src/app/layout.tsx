@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { AuthProvider } from "../lib/AuthProvider";
 import "../app/globals.css";
+import { Navbar } from "@/components/ui/navbar";
 
 export const metadata = {
   title: "Spin Living",
@@ -20,7 +21,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body className="bg-[#010101] font-[Inter] text-sm text-[#FFF] min-h-screen">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <Navbar />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

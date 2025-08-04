@@ -18,7 +18,6 @@ const Proprietaire = () => {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
 
       {/* Hero Section avec image de fond et overlay */}
       <section className="pt-28 pb-16 md:pt-52 md:pb-36 px-4 sm:px-6 lg:px-8 relative">
