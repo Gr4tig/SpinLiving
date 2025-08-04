@@ -21,19 +21,18 @@ import {
   uploadLogementImage,
   createLogement,
   LogementData,
-  AdresseData
+  AdresseData,
+  EquipementType,
+  equipementMapping
 } from "@/lib/appwrite";
+import { Checkbox } from "radix-ui";
 
 type ImagePreview = {
   url: string;
   file: File;
 };
 
-const EQUIPEMENTS: { value: "wifi" | "cuisine" | "machine"; label: string }[] = [
-  { value: "wifi", label: "Wifi" },
-  { value: "cuisine", label: "Cuisine" },
-  { value: "machine", label: "Machine à laver" },
-];
+
 
 export default function CreationLogement() {
   const [titre, setTitre] = useState("");
@@ -46,7 +45,7 @@ export default function CreationLogement() {
   
   const [nombreColoc, setNombreColoc] = useState("");
   const [m2, setM2] = useState("");
-  const [equipement, setEquipement] = useState<"wifi" | "cuisine" | "machine" | undefined>();
+  const [equipements, setEquipements] = useState<EquipementType[]>([]);
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({ 
     from: undefined,
@@ -58,6 +57,15 @@ export default function CreationLogement() {
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
+
+  // Fonction pour gérer le toggle des équipements
+  const handleEquipementToggle = (value: EquipementType) => {
+    setEquipements(current => 
+      current.includes(value)
+        ? current.filter(eq => eq !== value)
+        : [...current, value]
+    );
+  };
 
   // Format d'affichage de la date
   const formatDateDisplay = () => {
@@ -158,7 +166,7 @@ export default function CreationLogement() {
         description,
         nombreColoc: Number(nombreColoc),
         m2: m2 ? Number(m2) : undefined,
-        equipement,
+        equipement: equipements,
         datedispo: dateRange!.from!.toISOString(), // Utilisation de la date de début
         prix,
       };
@@ -372,18 +380,24 @@ export default function CreationLogement() {
                 </div>
 
                 {/* Equipement */}
-                <div className="space-y-2">
-                  <Label>Équipement</Label>
-                  <div className="flex flex-wrap gap-2">
-                    {EQUIPEMENTS.map((eq) => (
-                      <Button
-                        type="button"
-                        key={eq.value}
-                        variant={equipement === eq.value ? "default" : "outline"}
-                        onClick={() => setEquipement(eq.value)}
-                      >
-                        {eq.label}
-                      </Button>
+                <div className="space-y-4">
+                  <Label>Équipements disponibles</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    {Object.entries(equipementMapping).map(([value, { label, icon }]) => (
+                      <div key={value} className="flex items-center space-x-2">
+                        <Checkbox.Root 
+                          id={`equipement-${value}`}
+                          checked={equipements.includes(value as EquipementType)}
+                          onCheckedChange={() => handleEquipementToggle(value as EquipementType)}
+                          className="w-4 h-4 bg-white/10 border-white/20 rounded"
+                        />
+                        <label
+                          htmlFor={`equipement-${value}`}
+                          className="cursor-pointer text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                        >
+                          {label}
+                        </label>
+                      </div>
                     ))}
                   </div>
                 </div>

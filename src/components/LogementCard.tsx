@@ -1,13 +1,13 @@
+"use client";
+
 import { MapPin, Bed, ShowerHead, Users, CalendarDays } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { LogementCompletData } from "@/lib/appwrite";
+import { useRouter } from "next/navigation"; // Utilisez navigation, pas router
 
-type LogementCardProps = {
-  logement: LogementCompletData;
-  onVoirDetails?: () => void; // optionnel, callback sur clic bouton
-};
-
-export function LogementCard({ logement, onVoirDetails }: LogementCardProps) {
+export function LogementCard({ logement }: { logement: LogementCompletData }) {
+  const router = useRouter();
+  
   // Récupérer la première photo disponible
   const getPhotoUrl = () => {
     if (logement.photos && (logement.photos["1"] || logement.photos["2"] || logement.photos["3"] || logement.photos["4"] || logement.photos["5"])) {
@@ -34,7 +34,6 @@ export function LogementCard({ logement, onVoirDetails }: LogementCardProps) {
           alt={logement.titre}
           className="w-full h-44 object-cover"
         />
-        {/* Le prix n'est pas dans le modèle actuel mais on garde le code */}
         {logement.prix && (
           <div className="absolute top-3 right-3 bg-[#ff5734] text-white px-3 py-1 rounded-full text-sm font-semibold shadow">
             {logement.prix}€/nuit
@@ -48,7 +47,7 @@ export function LogementCard({ logement, onVoirDetails }: LogementCardProps) {
         <div className="flex items-center text-gray-400 text-sm mb-2">
           <MapPin className="h-4 w-4 mr-1" />
           {logement.adresse ? 
-            `${logement.adresse.ville || ''}` : 
+            `${logement.adresse.ville || ''}, ${logement.adresse.adresse || ''}` : 
             "Adresse inconnue"}
         </div>
         <div className="text-gray-300 text-sm mb-3 line-clamp-2">
@@ -65,12 +64,12 @@ export function LogementCard({ logement, onVoirDetails }: LogementCardProps) {
         <div className="flex items-center text-sm mb-4">
           <CalendarDays className="h-4 w-4 mr-1 text-[#ff5734]" />
           <span className={isDisponible() ? "text-green-400" : "text-[#ff5734]"}>
-            {isDisponible() ? "Disponible" : "Disponible à partir du " + new Date(logement.datedispo).toLocaleDateString()}
+            {isDisponible() ? "Disponible" : "Bientôt disponible"}
           </span>
         </div>
         <button
           className="mt-auto w-full bg-[#ff5734] hover:bg-[#e94c2d] text-white font-semibold py-2 rounded-lg transition"
-          onClick={onVoirDetails}
+          onClick={() => router.push(`/logement/${logement.publicId || logement.$id}`)}
         >
           Voir détails
         </button>

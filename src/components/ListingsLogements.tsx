@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { databases, getLogementComplet, LogementCompletData } from "@/lib/appwrite";
+import { databases, getLogementComplet, migrateLogementToPublicIds, LogementCompletData } from "@/lib/appwrite";
 import { LogementCard } from "@/components/LogementCard";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 const DB_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!;
 const COLLECTION_LOGEMENT_ID = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_LOGEMENT_ID!;
@@ -11,6 +12,7 @@ const COLLECTION_LOGEMENT_ID = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_LOGEM
 export function ListingsLogements() {
   const [logements, setLogements] = useState<LogementCompletData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [migrationStatus, setMigrationStatus] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchLogements() {
@@ -28,6 +30,15 @@ export function ListingsLogements() {
         
         // 3. Filtrer les résultats null
         setLogements(logementsComplets.filter(Boolean) as LogementCompletData[]);
+
+        // 4. Vérifier si des logements n'ont pas de publicId
+        const needsMigration = logementsComplets.some(
+          (logement) => logement && (!logement.publicId || logement.publicId === 'no-slug')
+        );
+
+        if (needsMigration) {
+          console.warn("Certains logements n'ont pas de publicId. Une migration est recommandée.");
+        }
       } catch (e) {
         console.error("Erreur lors du chargement des logements:", e);
         setLogements([]);
@@ -38,6 +49,21 @@ export function ListingsLogements() {
     fetchLogements();
   }, []);
 
+  // Fonction pour exécuter la migration des publicIds (uniquement pour les administrateurs)
+  const handleMigration = async () => {
+    try {
+      setMigrationStatus("en cours");
+      await migrateLogementToPublicIds();
+      setMigrationStatus("succès");
+      
+      // Rafraîchir la liste
+      window.location.reload();
+    } catch (error) {
+      console.error("Erreur lors de la migration:", error);
+      setMigrationStatus("échec");
+    }
+  };
+
   return (
     <section className="container py-10 text-center w-4/5">
       <h2 className="text-2xl font-bold mb-6">Les dernières offres</h2>
@@ -45,6 +71,7 @@ export function ListingsLogements() {
       {!loading && logements.length === 0 && (
         <Card className="p-6 text-center text-gray-500">Aucun logement trouvé.</Card>
       )}
+      
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 items-center justify-center">
         {logements.map((logement) => (
           <LogementCard key={logement.$id} logement={logement} />
