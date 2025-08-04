@@ -93,10 +93,10 @@ export const equipementMapping: Record<EquipementType, { label: string, icon: st
   "climatisation": { label: "Climatisation", icon: "snowflake" }
 };
 
-export function formatEquipements(equipements?: EquipementType[]): string {
-  if (!equipements || equipements.length === 0) return "Aucun équipement spécifié";
+export function formatequipement(equipement?: EquipementType[]): string {
+  if (!equipement || equipement.length === 0) return "Aucun équipement spécifié";
   
-  return equipements.map(eq => equipementMapping[eq]?.label || eq).join(", ");
+  return equipement.map(eq => equipementMapping[eq]?.label || eq).join(", ");
 }
 
 // --- SLUG HELPERS ---
