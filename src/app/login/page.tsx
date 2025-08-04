@@ -47,7 +47,6 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
       <div className="flex-grow container py-16 flex items-center">
         <div className="w-full max-w-md mx-auto px-4">
           <Card className="glass-morphism border-white/10">

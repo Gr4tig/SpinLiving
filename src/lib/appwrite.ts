@@ -28,6 +28,8 @@ export { client, account, databases, storage };
 // --- ENV HELPERS ---
 export const APPWRITE_DATABASE_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!;
 export const APPWRITE_COLLECTION_LOGEMENT_ID = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_LOGEMENT_ID!;
+export const APPWRITE_COLLECTION_ADRESSES_ID = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_ADRESSES_ID!;
+export const APPWRITE_COLLECTION_PHOTOSAPPART_ID = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_PHOTOSAPPART_ID!;
 export const APPWRITE_BUCKET_PHOTOSAPPART_ID = process.env.NEXT_PUBLIC_APPWRITE_BUCKET_PHOTOSAPPART_ID!;
 
 // --- TYPES ---
@@ -35,13 +37,33 @@ export type LogementData = {
   proprio: string; // userId
   titre: string;
   description: string;
-  adresse: string;
   nombreColoc: number;
   m2?: number;
   equipement?: "wifi" | "cuisine" | "machine";
   datedispo: string; // ISO date
-  photo1?: string;
-  photo2?: string;
+  prix: string;
+};
+
+export type AdresseData = {
+  ville: string;
+  adresse: string;
+  code_postal: string;
+  logement?: string; // Relation ID - optionnel car créé après le logement
+};
+
+export type PhotosAppartData = {
+  logement: string; // Relation ID
+  "1"?: string; // URL photo 1
+  "2"?: string; // URL photo 2
+  "3"?: string; // URL photo 3
+  "4"?: string; // URL photo 4
+  "5"?: string; // URL photo 5
+};
+
+export type LogementCompletData = LogementData & {
+  $id: string;
+  adresse?: AdresseData & { $id: string };
+  photos?: (PhotosAppartData & { $id: string });
 };
 
 // --- HELPERS ---
@@ -64,17 +86,189 @@ export async function uploadLogementImage(file: File): Promise<string> {
   return storage.getFileView(APPWRITE_BUCKET_PHOTOSAPPART_ID, uploaded.$id);
 }
 
-/** Créer un logement dans la collection Appwrite */
-export async function createLogement(data: LogementData) {
-  return databases.createDocument(
-    APPWRITE_DATABASE_ID,
-    APPWRITE_COLLECTION_LOGEMENT_ID,
-    ID.unique(),
-    data
-  );
+/** Créer un logement avec son adresse et ses photos */
+export async function createLogement(
+  logementData: LogementData, 
+  adresseData: AdresseData,
+  photos: {[key: string]: string} // Objet avec les URLs des photos (clés "1", "2", etc.)
+) {
+  try {
+    // 1. Créer le logement principal
+    const logement = await databases.createDocument(
+      APPWRITE_DATABASE_ID,
+      APPWRITE_COLLECTION_LOGEMENT_ID,
+      ID.unique(),
+      logementData
+    );
+
+    // 2. Créer l'adresse associée
+    const adresse = await databases.createDocument(
+      APPWRITE_DATABASE_ID,
+      APPWRITE_COLLECTION_ADRESSES_ID,
+      ID.unique(),
+      {
+        ...adresseData,
+        logement: logement.$id // Relation avec le logement
+      }
+    );
+
+    // 3. Créer l'entrée pour les photos
+    const photosData: PhotosAppartData = {
+      logement: logement.$id,
+      ...photos
+    };
+
+    const photosDoc = await databases.createDocument(
+      APPWRITE_DATABASE_ID,
+      APPWRITE_COLLECTION_PHOTOSAPPART_ID,
+      ID.unique(),
+      photosData
+    );
+
+    return {
+      ...logement,
+      adresse,
+      photos: photosDoc
+    };
+  } catch (error) {
+    console.error('❌ Erreur lors de la création du logement complet', error);
+    throw error;
+  }
 }
 
-// --- AUTH & INSCRIPTION (inchangés, juste déplacés) ---
+/** Récupérer un logement avec son adresse et ses photos */
+export async function getLogementComplet(logementId: string): Promise<LogementCompletData | null> {
+  try {
+    // 1. Récupérer le logement
+    const logement = await databases.getDocument(
+      APPWRITE_DATABASE_ID,
+      APPWRITE_COLLECTION_LOGEMENT_ID,
+      logementId
+    );
+
+    // 2. Récupérer l'adresse associée
+    const adresses = await databases.listDocuments(
+      APPWRITE_DATABASE_ID,
+      APPWRITE_COLLECTION_ADRESSES_ID,
+      [Query.equal('logement', logementId)]
+    );
+    
+    const adresse = adresses.documents.length > 0 ? adresses.documents[0] : undefined;
+
+    // 3. Récupérer les photos associées
+    const photosDocs = await databases.listDocuments(
+      APPWRITE_DATABASE_ID,
+      APPWRITE_COLLECTION_PHOTOSAPPART_ID,
+      [Query.equal('logement', logementId)]
+    );
+    
+    const photos = photosDocs.documents.length > 0 ? photosDocs.documents[0] : undefined;
+
+    return {
+      ...logement,
+      adresse,
+      photos
+    } as unknown as LogementCompletData;
+  } catch (error) {
+    console.error('❌ Erreur lors de la récupération du logement complet', error);
+    return null;
+  }
+}
+
+/** Rechercher des logements avec filtres */
+export async function rechercherLogements(filtres: {
+  ville?: string;
+  nombreColoc?: number;
+  equipement?: string;
+  dateDispoMin?: string;
+} = {}): Promise<LogementCompletData[]> {
+  try {
+    // Préparation des queries pour le logement
+    const logementQueries: any[] = [];
+    
+    if (filtres.nombreColoc) {
+      logementQueries.push(Query.equal('nombreColoc', filtres.nombreColoc));
+    }
+    
+    if (filtres.equipement) {
+      logementQueries.push(Query.equal('equipement', filtres.equipement));
+    }
+    
+    if (filtres.dateDispoMin) {
+      logementQueries.push(Query.greaterThanEqual('datedispo', filtres.dateDispoMin));
+    }
+
+    // Récupérer tous les logements qui correspondent aux critères de base
+    const logements = await databases.listDocuments(
+      APPWRITE_DATABASE_ID,
+      APPWRITE_COLLECTION_LOGEMENT_ID,
+      logementQueries
+    );
+    
+    // Si aucun résultat, retourner un tableau vide
+    if (logements.documents.length === 0) {
+      return [];
+    }
+    
+    // Récupérer toutes les adresses qui correspondent au filtre ville
+    let adressesMatchingVille = null;
+    if (filtres.ville) {
+      adressesMatchingVille = await databases.listDocuments(
+        APPWRITE_DATABASE_ID,
+        APPWRITE_COLLECTION_ADRESSES_ID,
+        [Query.equal('ville', filtres.ville)]
+      );
+      
+      // Si aucune adresse ne correspond à la ville, retourner un tableau vide
+      if (adressesMatchingVille.documents.length === 0) {
+        return [];
+      }
+    }
+    
+    // Construire un tableau complet avec les informations associées
+    const logementsComplets = await Promise.all(
+      logements.documents.map(async (logement) => {
+        // Récupérer l'adresse associée au logement
+        const adresses = await databases.listDocuments(
+          APPWRITE_DATABASE_ID,
+          APPWRITE_COLLECTION_ADRESSES_ID,
+          [Query.equal('logement', logement.$id)]
+        );
+        
+        const adresse = adresses.documents.length > 0 ? adresses.documents[0] : undefined;
+        
+        // Si on a un filtre ville et que l'adresse ne correspond pas, ignorer ce logement
+        if (filtres.ville && adressesMatchingVille && 
+            !adressesMatchingVille.documents.some(a => a.$id === adresse?.$id)) {
+          return null;
+        }
+        
+        // Récupérer les photos associées
+        const photosDocs = await databases.listDocuments(
+          APPWRITE_DATABASE_ID,
+          APPWRITE_COLLECTION_PHOTOSAPPART_ID,
+          [Query.equal('logement', logement.$id)]
+        );
+        
+        const photos = photosDocs.documents.length > 0 ? photosDocs.documents[0] : undefined;
+        
+        return {
+          ...logement,
+          adresse,
+          photos
+        } as unknown as LogementCompletData;
+      })
+    );
+    
+    // Filtrer les logements nuls (ceux qui ne correspondaient pas au filtre ville)
+    return logementsComplets.filter(Boolean) as LogementCompletData[];
+  } catch (error) {
+    console.error('❌ Erreur lors de la recherche de logements', error);
+    return [];
+  }
+}
+
+// --- AUTH & INSCRIPTION (inchangés) ---
 export async function register(
   email: string,
   password: string,

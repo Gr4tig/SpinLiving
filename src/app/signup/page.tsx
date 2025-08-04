@@ -85,7 +85,6 @@ export default function Register() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
       <div className="flex-grow flex items-center justify-center py-16 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-lg">
           <div className="glass-morphism rounded-xl p-8">
