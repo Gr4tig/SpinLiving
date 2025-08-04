@@ -9,7 +9,7 @@ import { MapPin, Calendar, Users, Home, Bath, ArrowLeft } from "lucide-react";
 import { Footer } from "@/components/ui/footer";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
-import { formatEquipements } from "@/lib/appwrite";
+import { formatequipement } from "@/lib/appwrite";
 import { Wifi, UtensilsCrossed, WashingMachine, Car, Sun, Snowflake } from "lucide-react";
 
 // Fonction pour obtenir l'icône d'un équipement
@@ -221,7 +221,7 @@ export default function LogementDetails() {
               <span className="font-bold text-lg mr-1">Équipement</span>
               <div className="flex flex-wrap gap-4 mt-3">
                 {Array.isArray(logement.equipement) ? (
-                  // Cas où equipements est un tableau
+                  // Cas où equipement est un tableau
                   logement.equipement.map((eq) => (
                     <span key={eq} className="flex items-center">
                       {getEquipementIcon(eq)}

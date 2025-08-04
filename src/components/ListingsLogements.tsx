@@ -12,7 +12,6 @@ const COLLECTION_LOGEMENT_ID = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_LOGEM
 export function ListingsLogements() {
   const [logements, setLogements] = useState<LogementCompletData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [migrationStatus, setMigrationStatus] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchLogements() {
@@ -48,21 +47,6 @@ export function ListingsLogements() {
     }
     fetchLogements();
   }, []);
-
-  // Fonction pour exécuter la migration des publicIds (uniquement pour les administrateurs)
-  const handleMigration = async () => {
-    try {
-      setMigrationStatus("en cours");
-      await migrateLogementToPublicIds();
-      setMigrationStatus("succès");
-      
-      // Rafraîchir la liste
-      window.location.reload();
-    } catch (error) {
-      console.error("Erreur lors de la migration:", error);
-      setMigrationStatus("échec");
-    }
-  };
 
   return (
     <section className="container py-10 text-center w-4/5">
