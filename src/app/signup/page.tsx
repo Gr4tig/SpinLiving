@@ -2,19 +2,16 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Navbar } from '@/components/ui/navbar';
-import { Footer } from '@/components/ui/footer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import Link from 'next/link';
-import { Mail, Lock, User, Phone, Image as ImageIcon, MapPin } from 'lucide-react';
+import { Mail, Lock, User, Phone, MapPin } from 'lucide-react';
 import { register, uploadProfilePhoto } from '@/lib/appwrite';
 import { toast } from 'sonner';
 import { useReCaptcha } from "@/components/captcha/useReCaptcha";
-
-const { getCaptchaToken } = useReCaptcha(); // Utilisez le hook
+import { Footer } from '@/components/ui/footer';
 
 const objectifs = [
   "Télétravail",
@@ -25,6 +22,9 @@ const objectifs = [
 ];
 
 export default function Register() {
+  // Déplacé le hook à l'intérieur du composant où il devrait être utilisé
+  const { getCaptchaToken } = useReCaptcha();
+  
   const [accountType, setAccountType] = useState<'locataire' | 'proprio'>('locataire');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -45,8 +45,8 @@ export default function Register() {
     }
   };
 
-     // Fonction pour vérifier le token reCAPTCHA
-  const verifyRecaptcha = async (token) => {
+  // Ajout d'un type correct pour le token
+  const verifyRecaptcha = async (token: string): Promise<boolean> => {
     try {
       const response = await fetch('/api/verify-recaptcha', {
         method: 'POST',
@@ -55,7 +55,7 @@ export default function Register() {
       });
       
       const data = await response.json();
-      return data.success;
+      return !!data.success; // Convertit explicitement en booléen
     } catch (error) {
       console.error('Erreur lors de la vérification du captcha:', error);
       return false;
@@ -80,6 +80,13 @@ export default function Register() {
     setLoading(true);
     
     try {
+      // Vérification que getCaptchaToken est disponible
+      if (!getCaptchaToken) {
+        toast.error("Le service de vérification n'est pas disponible. Veuillez réessayer.");
+        setLoading(false);
+        return;
+      }
+      
       // Obtenir un token reCAPTCHA
       const token = await getCaptchaToken('register');
       
@@ -119,7 +126,6 @@ export default function Register() {
       setLoading(false);
     }
   };
-
 
   return (
     <div className="min-h-screen flex flex-col">
