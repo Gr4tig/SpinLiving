@@ -1,41 +1,40 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const data = await request.json();
+  const { token } = data;
+
+  if (!token) {
+    return NextResponse.json({ success: false, error: 'Token missing' }, { status: 400 });
+  }
+
   try {
-    const { token } = await request.json();
-    
-    if (!token) {
-      return NextResponse.json(
-        { success: false, message: 'Token reCAPTCHA manquant' }, 
-        { status: 400 }
-      );
-    }
-    
-    // Vérifiez le token avec l'API Google
-    const secretKey = process.env.RECAPTCHA_SECRET_KEY;
+    // Vérifier le token avec l'API Google
     const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `secret=${secretKey}&response=${token}`
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        secret: process.env.RECAPTCHA_SECRET_KEY || '',
+        response: token,
+      }).toString(),
     });
-    
-    const data = await response.json();
-    
-    // Vérifiez si le score est suffisant (0.5 est un seuil courant)
-    if (data.success && data.score > 0.5) {
-      return NextResponse.json({ success: true, score: data.score });
+
+    const result = await response.json();
+
+    // Si le score est trop bas, considérer comme un robot
+    if (result.success && result.score >= 0.5) {
+      return NextResponse.json({ success: true, score: result.score });
     } else {
       return NextResponse.json({ 
         success: false, 
-        message: 'Vérification reCAPTCHA échouée',
-        details: data 
-      }, { status: 400 });
+        error: 'reCAPTCHA verification failed',
+        details: result 
+      });
     }
   } catch (error) {
-    console.error('Erreur lors de la vérification reCAPTCHA:', error);
-    return NextResponse.json(
-      { success: false, message: 'Erreur serveur' }, 
-      { status: 500 }
-    );
+    console.error('Error verifying reCAPTCHA:', error);
+    return NextResponse.json({ success: false, error: 'Server error' }, { status: 500 });
   }
 }
