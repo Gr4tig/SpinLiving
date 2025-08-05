@@ -12,6 +12,9 @@ import Link from 'next/link';
 import { Mail, Lock, User, Phone, Image as ImageIcon, MapPin } from 'lucide-react';
 import { register, uploadProfilePhoto } from '@/lib/appwrite';
 import { toast } from 'sonner';
+import { useReCaptcha } from "@/components/captcha/useReCaptcha";
+
+const { getCaptchaToken } = useReCaptcha(); // Utilisez le hook
 
 const objectifs = [
   "Télétravail",
@@ -42,6 +45,23 @@ export default function Register() {
     }
   };
 
+     // Fonction pour vérifier le token reCAPTCHA
+  const verifyRecaptcha = async (token) => {
+    try {
+      const response = await fetch('/api/verify-recaptcha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      
+      const data = await response.json();
+      return data.success;
+    } catch (error) {
+      console.error('Erreur lors de la vérification du captcha:', error);
+      return false;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -58,11 +78,28 @@ export default function Register() {
     if (!photoFile) return toast.error("La photo est requise.");
 
     setLoading(true);
+    
     try {
-      // 1. Upload photo dans Appwrite bucket
+      // Obtenir un token reCAPTCHA
+      const token = await getCaptchaToken('register');
+      
+      if (!token) {
+        toast.error("La vérification anti-robot a échoué. Veuillez réessayer.");
+        setLoading(false);
+        return;
+      }
+      
+      // Vérifier le token côté serveur
+      const isHuman = await verifyRecaptcha(token);
+      
+      if (!isHuman) {
+        toast.error("La vérification anti-robot a échoué. Êtes-vous un robot?");
+        setLoading(false);
+        return;
+      }
+      
+      // Si la vérification réussit, procéder à l'inscription
       const photoUrl = await uploadProfilePhoto(photoFile);
-
-      // 2. Appel à register (adapte la signature si besoin)
       await register(
         email,
         password,
@@ -82,6 +119,7 @@ export default function Register() {
       setLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen flex flex-col">
