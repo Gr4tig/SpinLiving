@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { databases, getLogementComplet, migrateLogementToPublicIds, LogementCompletData } from "@/lib/appwrite";
+import { databases, getLogementComplet, LogementCompletData } from "@/lib/appwrite";
 import { LogementCard } from "@/components/LogementCard";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

@@ -107,6 +107,7 @@ export default function Register() {
       
       // Si la vérification réussit, procéder à l'inscription
       const photoUrl = await uploadProfilePhoto(photoFile);
+
       await register(
         email,
         password,
@@ -118,14 +119,17 @@ export default function Register() {
         photoUrl,
         accountType
       );
-      toast.success('Inscription réussie ✅');
-      router.push('/logement/recherche');
-    } catch (err: any) {
-      toast.error(err.message || "Erreur lors de l'inscription");
-    } finally {
-      setLoading(false);
-    }
-  };
+
+      toast.success('Inscription réussie!');
+    
+      // IMPORTANT: Rediriger vers la page intermédiaire au lieu de verify-email
+      window.location.href = '/inscription-reussie';
+      } catch (registerError: any) {
+        toast.error(registerError.message || "Erreur lors de l'inscription");
+      } finally {
+        setLoading(false);
+      }
+    };
 
   return (
     <div className="min-h-screen flex flex-col">

@@ -7,8 +7,21 @@ export async function createAccount(email: string, password: string, name: strin
 }
 
 export async function login(email: string, password: string) {
-  await account.createEmailPasswordSession(email, password);
-  return getCurrentAccount();
+  try {
+    const session = await account.createEmailPasswordSession(email, password);
+    
+    // Vérifier si l'email est vérifié
+    const user = await account.get();
+    const isVerified = user.emailVerification;
+    
+    // Stocker l'état de vérification dans un cookie pour le middleware
+    document.cookie = `email-verified=${isVerified}; path=/;`;
+    
+    return session;
+  } catch (error) {
+    console.error('Erreur de connexion:', error);
+    throw error;
+  }
 }
 
 export async function getCurrentAccount(): Promise<Models.User<Models.Preferences> | null> {
