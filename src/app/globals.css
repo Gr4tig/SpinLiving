@@ -27,3 +27,7 @@ summary::-webkit-details-marker {
   --color-primary: #FF5D3D;
   --color-secondary: #010101;
 }
+
+.grecaptcha-badge { 
+  visibility: hidden !important;
+}
