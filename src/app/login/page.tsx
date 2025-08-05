@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/AuthProvider";
 import { useRouter } from "next/navigation";
-import { Navbar } from "@/components/ui/navbar";
 import { Footer } from "@/components/ui/footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,17 +11,25 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { useReCaptcha } from "@/components/captcha/useReCaptcha"; // Mise à jour du chemin
+import { useReCaptcha } from "@/components/captcha/ReCaptchaProvider"; // Chemin mis à jour
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
+  const [captchaReady, setCaptchaReady] = useState(false);
 
   const { user, login } = useAuth();
   const router = useRouter();
-  const { getCaptchaToken } = useReCaptcha(); // Utilisez le hook
+  const { getCaptchaToken, isReady } = useReCaptcha(); // Utilise la propriété isReady
+
+  // Détecter quand le captcha est prêt
+  useEffect(() => {
+    if (isReady) {
+      setCaptchaReady(true);
+    }
+  }, [isReady]);
 
   useEffect(() => {
     if (user) {
@@ -30,8 +37,8 @@ export default function Login() {
     }
   }, [user, router]);
 
-  // Fonction pour vérifier le token reCAPTCHA
-  const verifyRecaptcha = async (token) => {
+  // Fonction pour vérifier le token reCAPTCHA avec typage correct
+  const verifyRecaptcha = async (token: string): Promise<boolean> => {
     try {
       const response = await fetch('/api/verify-recaptcha', {
         method: 'POST',
@@ -40,7 +47,7 @@ export default function Login() {
       });
       
       const data = await response.json();
-      return data.success;
+      return !!data.success;
     } catch (error) {
       console.error('Erreur lors de la vérification du captcha:', error);
       return false;
@@ -52,25 +59,36 @@ export default function Login() {
     setFormLoading(true);
     
     try {
-      // Obtenir un token reCAPTCHA
-      const token = await getCaptchaToken('login');
+      // Obtenir un token reCAPTCHA avec gestion d'erreur améliorée
+      let token = null;
+      try {
+        token = await getCaptchaToken('login');
+      } catch (captchaError) {
+        console.error('Erreur lors de l\'exécution de reCAPTCHA:', captchaError);
+      }
       
       if (!token) {
-        toast.error("La vérification anti-robot a échoué. Veuillez réessayer.");
-        setFormLoading(false);
-        return;
+        // Si en production, exiger le captcha
+        if (process.env.NODE_ENV === 'production') {
+          toast.error("La vérification de sécurité a échoué. Veuillez recharger la page et réessayer.");
+          setFormLoading(false);
+          return;
+        } else {
+          // En développement, permettre de continuer sans captcha
+          console.warn("Bypass captcha in development mode");
+        }
+      } else {
+        // Vérifier le token côté serveur
+        const isHuman = await verifyRecaptcha(token);
+        
+        if (!isHuman && process.env.NODE_ENV === 'production') {
+          toast.error("La vérification anti-robot a échoué. Êtes-vous un robot?");
+          setFormLoading(false);
+          return;
+        }
       }
       
-      // Vérifier le token côté serveur
-      const isHuman = await verifyRecaptcha(token);
-      
-      if (!isHuman) {
-        toast.error("La vérification anti-robot a échoué. Êtes-vous un robot?");
-        setFormLoading(false);
-        return;
-      }
-      
-      // Si la vérification réussit, procéder à la connexion
+      // Procéder à la connexion
       await login(email, password);
       toast.success("Connexion réussie ✅");
     } catch (err: any) {
@@ -80,7 +98,6 @@ export default function Login() {
     }
   };
 
-  // Le reste du composant reste inchangé
   if (user) {
     return <div className="min-h-screen flex items-center justify-center">Chargement...</div>;
   }
@@ -146,6 +163,11 @@ export default function Login() {
                 </div>
                 <div className="text-xs text-muted-foreground">
                   Ce site est protégé par reCAPTCHA pour garantir que vous n'êtes pas un robot.
+                  {!captchaReady && (
+                    <span className="block text-amber-500 mt-1">
+                      Chargement de la protection anti-robot...
+                    </span>
+                  )}
                 </div>
                 <Button 
                   type="submit" 
@@ -173,3 +195,6 @@ export default function Login() {
     </div>
   );
 }
+
+// Force le rendu dynamique (pas de prérendu)
+export const dynamic = "force-dynamic";

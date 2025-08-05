@@ -5,7 +5,7 @@ import { Navbar } from "@/components/ui/navbar";
 import { ReCaptchaProvider } from "@/components/captcha/ReCaptchaProvider";
 
 export const metadata = {
-  title: "Spin Living",
+  title: "SpinLiving",
   description: "La colocation rotative, simple & flexible",
 };
 
