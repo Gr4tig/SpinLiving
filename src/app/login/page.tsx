@@ -182,7 +182,7 @@ export default function Login() {
               <div className="text-center w-full">
                 <p className="text-sm text-muted-foreground">
                   Pas encore de compte?{" "}
-                  <Link href="/register" className="text-primary hover:underline">
+                  <Link href="/signup" className="text-primary hover:underline">
                     S'inscrire
                   </Link>
                 </p>
