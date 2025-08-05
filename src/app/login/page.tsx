@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { useReCaptcha } from "@/components/captcha/useReCaptcha"; // Mise à jour du chemin
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -21,6 +22,7 @@ export default function Login() {
 
   const { user, login } = useAuth();
   const router = useRouter();
+  const { getCaptchaToken } = useReCaptcha(); // Utilisez le hook
 
   useEffect(() => {
     if (user) {
@@ -28,10 +30,47 @@ export default function Login() {
     }
   }, [user, router]);
 
+  // Fonction pour vérifier le token reCAPTCHA
+  const verifyRecaptcha = async (token) => {
+    try {
+      const response = await fetch('/api/verify-recaptcha', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      
+      const data = await response.json();
+      return data.success;
+    } catch (error) {
+      console.error('Erreur lors de la vérification du captcha:', error);
+      return false;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormLoading(true);
+    
     try {
+      // Obtenir un token reCAPTCHA
+      const token = await getCaptchaToken('login');
+      
+      if (!token) {
+        toast.error("La vérification anti-robot a échoué. Veuillez réessayer.");
+        setFormLoading(false);
+        return;
+      }
+      
+      // Vérifier le token côté serveur
+      const isHuman = await verifyRecaptcha(token);
+      
+      if (!isHuman) {
+        toast.error("La vérification anti-robot a échoué. Êtes-vous un robot?");
+        setFormLoading(false);
+        return;
+      }
+      
+      // Si la vérification réussit, procéder à la connexion
       await login(email, password);
       toast.success("Connexion réussie ✅");
     } catch (err: any) {
@@ -41,6 +80,7 @@ export default function Login() {
     }
   };
 
+  // Le reste du composant reste inchangé
   if (user) {
     return <div className="min-h-screen flex items-center justify-center">Chargement...</div>;
   }
@@ -103,6 +143,9 @@ export default function Login() {
                       )}
                     </button>
                   </div>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Ce site est protégé par reCAPTCHA pour garantir que vous n'êtes pas un robot.
                 </div>
                 <Button 
                   type="submit" 

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { AuthProvider } from "../lib/AuthProvider";
 import "../app/globals.css";
 import { Navbar } from "@/components/ui/navbar";
+import { ReCaptchaProvider } from "@/components/captcha/ReCaptchaProvider";
 
 export const metadata = {
   title: "Spin Living",
@@ -12,7 +13,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="fr">
       <head>
-        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" href="/favicon.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
@@ -21,10 +22,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         />
       </head>
       <body className="bg-[#010101] font-[Inter] text-sm text-[#FFF] min-h-screen">
-        <AuthProvider>
-          <Navbar />
-          {children}
-        </AuthProvider>
+        <ReCaptchaProvider>
+          <AuthProvider>
+            <Navbar />
+            {children}
+          </AuthProvider>
+        </ReCaptchaProvider>
       </body>
     </html>
   );
