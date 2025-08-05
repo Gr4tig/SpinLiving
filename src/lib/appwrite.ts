@@ -412,40 +412,6 @@ export async function rechercherLogements(filtres: {
   }
 }
 
-/** Créer des publicIds pour les logements existants qui n'en ont pas encore */
-export async function migrateLogementToPublicIds(): Promise<void> {
-  try {
-    // Récupérer tous les logements qui n'ont pas encore de publicId
-    const logementsToUpdate = await databases.listDocuments(
-      APPWRITE_DATABASE_ID,
-      APPWRITE_COLLECTION_LOGEMENT_ID,
-      [Query.isNull('publicId')]
-    );
-    
-    console.log(`${logementsToUpdate.documents.length} logements à mettre à jour avec des publicIds...`);
-    
-    for (const logement of logementsToUpdate.documents) {
-      // Générer un nouveau publicId unique pour ce logement
-      const publicId = await generateUniquePublicId();
-      
-      // Mettre à jour le document avec ce publicId
-      await databases.updateDocument(
-        APPWRITE_DATABASE_ID,
-        APPWRITE_COLLECTION_LOGEMENT_ID,
-        logement.$id,
-        { publicId }
-      );
-      
-      console.log(`Logement ${logement.$id} mis à jour avec publicId: ${publicId}`);
-    }
-    
-    console.log('Migration des publicIds terminée avec succès!');
-  } catch (error) {
-    console.error('❌ Erreur lors de la migration des publicIds:', error);
-    throw error;
-  }
-}
-
 // --- AUTH & INSCRIPTION ---
 // Reste du code inchangé...
 export async function register(
@@ -502,18 +468,41 @@ export async function register(
     );
     console.log("[register] Document créé dans la collection", collectionId);
 
-    // Création de la session
-    console.log("[register] Création de la session...");
-    const session = await account.createEmailPasswordSession(email, password);
-    console.log("[register] Session créée avec succès");
+       // Création de la session
+       console.log("[register] Création de la session...");
+       const session = await account.createEmailPasswordSession(email, password);
+       console.log("[register] Session créée avec succès");
+       
+       // ✅ NOUVEAU: Stocker explicitement que l'utilisateur est connecté mais non vérifié
+       if (typeof window !== 'undefined') {
+        sessionStorage.setItem('registrationData', JSON.stringify({
+          email,
+          justRegistered: true,
+          timestamp: Date.now()
+        }));
+        
+        // Si vous voulez garder le localStorage aussi
+        localStorage.setItem('userRegistered', 'true');
+        localStorage.setItem('userEmail', email);
+      }
+       
+       // Envoyer l'email de vérification
+       try {
+        const url = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
+        await account.createVerification(`${url}/verify-email`);
+        console.log("[register] Email de vérification envoyé");
+      } catch (verificationError) {
+        console.error("[register] Erreur d'envoi de l'email de vérification:", verificationError);
+      }
+      
+      return session;
+     } catch (err: any) {
+       console.error("[register] Erreur attrapée :", err);
+       throw err;
+     }
+   }
 
-    return session;
-  } catch (err: any) {
-    console.error("[register] Erreur attrapée :", err);
-    throw err;
-  }
-}
-
+   
 export async function login(
   email: string,
   password: string
@@ -569,4 +558,45 @@ export async function uploadProfilePhoto(file: File): Promise<string> {
   // URL d'accès public ou preview (selon config bucket)
   // Pour un accès sécurisé, il faut générer une URL de preview, sinon utilise getFileView
   return storage.getFileView(bucketId, res.$id);
+}
+
+export async function sendVerificationEmail(): Promise<void> {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
+    
+    // ✅ IMPORTANT: Utiliser l'API route qui existe maintenant
+    const verificationUrl = `${baseUrl}/api/verify`;
+    
+    console.log("Envoi d'email avec URL de callback:", verificationUrl);
+    await account.createVerification(verificationUrl);
+    console.log('✅ Email de vérification envoyé');
+  } catch (error) {
+    console.error('❌ Erreur lors de l\'envoi de l\'email de vérification:', error);
+    throw new Error('Impossible d\'envoyer l\'email de vérification');
+  }
+}
+/**
+ * Vérifie l'email d'un utilisateur avec le token envoyé par email
+ */
+export async function confirmVerificationEmail(userId: string, secret: string): Promise<void> {
+  try {
+    await account.updateVerification(userId, secret);
+    console.log('✅ Email vérifié avec succès');
+  } catch (error) {
+    console.error('❌ Erreur lors de la vérification de l\'email:', error);
+    throw new Error('La vérification de l\'email a échoué');
+  }
+}
+
+/**
+ * Vérifie si l'utilisateur actuel a confirmé son email
+ */
+export async function isEmailVerified(): Promise<boolean> {
+  try {
+    const user = await account.get();
+    return user.emailVerification;
+  } catch (error) {
+    console.error('❌ Erreur lors de la vérification du statut de l\'email:', error);
+    return false;
+  }
 }
