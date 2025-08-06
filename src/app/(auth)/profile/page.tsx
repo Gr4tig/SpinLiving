@@ -13,6 +13,7 @@ import { User, Edit, Home, Plus, List, Search } from "lucide-react";
 import { useAuth } from "@/lib/AuthProvider";
 import { useEffect } from "react";
 import MesAnnonces from "@/components/ui/mes-annonces";
+import { ContactRequests } from "@/components/ui/contact-requests";
 
 export default function Profile() {
   const { user, profile, isOwner, logout, loading } = useAuth();
@@ -208,19 +209,7 @@ export default function Profile() {
                       </Card>
                     </TabsContent>
                     <TabsContent value="requests" className="mt-4">
-                      <Card className="bg-white/5 rounded-lg border border-white/10">
-                        <CardHeader>
-                          <CardTitle>Demandes de contact</CardTitle>
-                          <CardDescription>
-                            Locataires intéressés par vos logements
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-center py-8 text-muted-foreground">
-                            Aucune demande de contact pour le moment
-                          </div>
-                        </CardContent>
-                      </Card>
+                      <ContactRequests />
                     </TabsContent>
                   </Tabs>
                 ) : (
