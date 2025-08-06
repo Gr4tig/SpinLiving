@@ -1,4 +1,5 @@
 import { Client, Account, Databases, Models, ID, Storage, Query } from "appwrite";
+import { format } from "date-fns";
 import { nanoid } from "nanoid"; // Assurez-vous d'installer cette dépendance: npm install nanoid
 
 // --- INIT CLIENT ---
@@ -32,7 +33,9 @@ export const APPWRITE_COLLECTION_LOGEMENT_ID = process.env.NEXT_PUBLIC_APPWRITE_
 export const APPWRITE_COLLECTION_ADRESSES_ID = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_ADRESSES_ID!;
 export const APPWRITE_COLLECTION_PHOTOSAPPART_ID = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_PHOTOSAPPART_ID!;
 export const APPWRITE_COLLECTION_PROPRIO_ID = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_PROPRIO_ID!;
+export const APPWRITE_COLLECTION_LOCATAIRE_ID = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_LOCATAIRE_ID!;
 export const APPWRITE_BUCKET_PHOTOSAPPART_ID = process.env.NEXT_PUBLIC_APPWRITE_BUCKET_PHOTOSAPPART_ID!;
+export const APPWRITE_COLLECTION_CONTACT_REQUESTS_ID = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_CONTACT_REQUESTS_ID!;
 
 export type EquipementType = "wifi" | "cuisine" | "machine" | "parking" | "terrasse" | "climatisation";
 
@@ -82,6 +85,16 @@ export type LogementCompletData = LogementData & {
   photos?: (PhotosAppartData & { $id: string });
   proprio?: proprioData;
 };
+
+export interface ContactRequest {
+  $id?: string;
+  $createdAt?: string; // Date ISO
+  demandeur_id: string;
+  logement_id: string;
+  message?: string;
+  date_arrivee_souhaitee?: Date | string;
+  statut: 'pending' | 'accepted' | 'rejected';
+}
 
 // Ajouter un mapping pour l'affichage des équipements
 export const equipementMapping: Record<EquipementType, { label: string, icon: string }> = {
@@ -598,5 +611,195 @@ export async function isEmailVerified(): Promise<boolean> {
   } catch (error) {
     console.error('❌ Erreur lors de la vérification du statut de l\'email:', error);
     return false;
+  }
+}
+
+
+export async function createContactRequest(
+  userId: string,  // User ID (pas document ID)
+  logementId: string,
+  message?: string,
+  dateArriveeSouhaitee?: Date
+): Promise<ContactRequest> {
+  try {
+    console.log('📩 Création d\'une demande de contact:', { userId, logementId });
+    
+    // 1. Trouver le document locataire correspondant à l'userId
+    const locataireResponse = await databases.listDocuments(
+      APPWRITE_DATABASE_ID,
+      process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_LOCATAIRE_ID!,
+      [Query.equal('userid', userId)]
+    );
+    
+    if (locataireResponse.documents.length === 0) {
+      throw new Error('Utilisateur non trouvé dans la collection locataire');
+    }
+    
+    const locataireDocId = locataireResponse.documents[0].$id;
+    
+    // 2. Formatter la date si elle existe
+    const dateString = dateArriveeSouhaitee 
+      ? format(dateArriveeSouhaitee, 'yyyy-MM-dd') 
+      : undefined;
+
+    // 3. Créer la demande
+    const contactRequest = await databases.createDocument(
+      APPWRITE_DATABASE_ID,
+      process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_CONTACT_REQUESTS_ID!,
+      ID.unique(),
+      {
+        locataire: locataireDocId,  // Relation avec le document locataire
+        logement: logementId,       // Relation avec le document logement
+        message,
+        date_arrivee_souhaitee: dateString,
+        Statut: 'pending',  // Notez la majuscule si c'est comme ça dans votre schéma
+      }
+    );
+
+    console.log('✅ Demande de contact créée avec succès:', contactRequest.$id);
+    return contactRequest as unknown as ContactRequest;
+  } catch (error) {
+    console.error('❌ Erreur lors de la création de la demande de contact:', error);
+    throw error instanceof Error 
+      ? error 
+      : new Error('Impossible de créer la demande de contact');
+  }
+}
+
+export async function checkExistingContactRequest(
+  locataireId: string,  // ID du document locataire (pas l'userId)
+  logementId: string
+): Promise<boolean> {
+  try {
+    console.log('🔍 Vérification des demandes existantes:', { locataireId, logementId });
+    
+    const response = await databases.listDocuments(
+      APPWRITE_DATABASE_ID,
+      process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_CONTACT_REQUESTS_ID!,
+      [
+        Query.equal('locataire', locataireId),
+        Query.equal('logement', logementId),
+      ]
+    );
+
+    const exists = response.documents.length > 0;
+    console.log(exists 
+      ? '✅ Une demande existe déjà pour ce logement' 
+      : '✅ Aucune demande existante pour ce logement');
+    
+    return exists;
+  } catch (error) {
+    console.error('❌ Erreur lors de la vérification des demandes existantes:', error);
+    return false;
+  }
+}
+export async function getContactRequestsForProprio(proprioId: string): Promise<ContactRequest[]> {
+  try {
+    console.log('🔍 Récupération des demandes pour le propriétaire:', proprioId);
+    
+    // D'abord récupérer tous les logements du propriétaire
+    const logements = await databases.listDocuments(
+      APPWRITE_DATABASE_ID,
+      APPWRITE_COLLECTION_LOGEMENT_ID,
+      [Query.equal('proprio', proprioId)]
+    );
+    
+    if (logements.documents.length === 0) {
+      console.log('ℹ️ Aucun logement trouvé pour ce propriétaire');
+      return [];
+    }
+    
+    // Extraire les IDs des logements
+    const logementIds = logements.documents.map(doc => doc.$id);
+    
+    // Récupérer toutes les demandes pour ces logements
+    const requests = await databases.listDocuments(
+      APPWRITE_DATABASE_ID,
+      APPWRITE_COLLECTION_CONTACT_REQUESTS_ID,
+      [Query.equal('logement_id', logementIds)]
+    );
+    
+    console.log(`✅ ${requests.documents.length} demandes trouvées`);
+    return requests.documents as unknown as ContactRequest[];
+  } catch (error) {
+    console.error('❌ Erreur lors de la récupération des demandes de contact:', error);
+    return [];
+  }
+}
+
+export async function getContactRequestsForColocataire(colocataireId: string): Promise<ContactRequest[]> {
+  try {
+    console.log('🔍 Récupération des demandes du colocataire:', colocataireId);
+    
+    const requests = await databases.listDocuments(
+      APPWRITE_DATABASE_ID,
+      APPWRITE_COLLECTION_CONTACT_REQUESTS_ID,
+      [Query.equal('demandeur_id', colocataireId)]
+    );
+    
+    console.log(`✅ ${requests.documents.length} demandes trouvées`);
+    return requests.documents as unknown as ContactRequest[];
+  } catch (error) {
+    console.error('❌ Erreur lors de la récupération des demandes du colocataire:', error);
+    return [];
+  }
+}
+
+
+export async function updateContactRequestStatus(
+  requestId: string,
+  newStatus: 'pending' | 'accepted' | 'rejected'
+): Promise<ContactRequest> {
+  try {
+    console.log('📝 Mise à jour du statut de la demande:', { requestId, newStatus });
+    
+    const updated = await databases.updateDocument(
+      APPWRITE_DATABASE_ID,
+      APPWRITE_COLLECTION_CONTACT_REQUESTS_ID,
+      requestId,
+      { statut: newStatus }
+    );
+    
+    console.log('✅ Statut de la demande mis à jour avec succès');
+    return updated as unknown as ContactRequest;
+  } catch (error) {
+    console.error('❌ Erreur lors de la mise à jour du statut:', error);
+    throw new Error('Impossible de mettre à jour le statut de la demande');
+  }
+}
+
+export async function getUserAccountType(userId: string): Promise<number | string | null> {
+  try {
+    console.log('🔍 Récupération du type de compte pour l\'utilisateur:', userId);
+    
+    // Vérifier d'abord dans la collection des propriétaires
+    const proprioResult = await databases.listDocuments(
+      APPWRITE_DATABASE_ID,
+      APPWRITE_COLLECTION_PROPRIO_ID,
+      [Query.equal('userid', userId)]
+    );
+    
+    if (proprioResult.documents.length > 0) {
+      console.log('✅ Utilisateur trouvé dans la collection des propriétaires');
+      return 1; // Type proprio
+    }
+    
+    // Sinon vérifier dans la collection des colocataires
+    const locataireResult = await databases.listDocuments(
+      APPWRITE_DATABASE_ID,
+      APPWRITE_COLLECTION_LOCATAIRE_ID!,
+      [Query.equal('userid', userId)]
+    );
+    
+    if (locataireResult.documents.length > 0) {
+      console.log('✅ Utilisateur trouvé dans la collection des colocataires');
+      return 2; // Type colocataire
+    }
+    
+    console.log('❌ Utilisateur non trouvé dans les collections de profils');
+    return null;
+  } catch (error) {
+    console.error('❌ Erreur lors de la récupération du type de compte:', error);
+    return null;
   }
 }
