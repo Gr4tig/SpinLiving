@@ -2,15 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { equipementMapping, getLogementByPublicId, LogementCompletData } from "@/lib/appwrite"; // Import modifié
+import { equipementMapping, getLogementByPublicId, LogementCompletData, createContactRequest, checkExistingContactRequest, databases, APPWRITE_DATABASE_ID, getUserAccountType } from "@/lib/appwrite"; // Import modifié
 import { Button } from "@/components/ui/button";
 import { Card, CardSpin } from "@/components/ui/card";
-import { MapPin, Calendar, Users, Home, Bath, ArrowLeft } from "lucide-react";
+import { MapPin, Calendar, Users, Home, Bath, ArrowLeft, AlertCircle, Bug } from "lucide-react";
 import { Footer } from "@/components/ui/footer";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { formatequipement } from "@/lib/appwrite";
 import { Wifi, UtensilsCrossed, WashingMachine, Car, Sun, Snowflake } from "lucide-react";
+import { useAuth } from "@/lib/AuthProvider";
+import { toast } from "sonner";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ContactModal } from "@/components/logement/ContactModal";
+import { Query } from "appwrite";
 
 // Fonction pour obtenir l'icône d'un équipement
 function getEquipementIcon(type: string) {
@@ -42,11 +47,22 @@ export default function LogementDetails() {
   const params = useParams();
   const router = useRouter();
   const slug = params.slug as string; // Renommé de id à slug
+  const { user, profile } = useAuth();
 
   const [logement, setLogement] = useState<LogementCompletData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
   const [photos, setPhotos] = useState<string[]>([]);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [hasExistingRequest, setHasExistingRequest] = useState(false);
+  const [userAccountType, setUserAccountType] = useState<number | null>(null);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
+
+  // Déterminer si l'utilisateur est un colocataire (peut faire des demandes)
+  const isColocataire = userAccountType === 2;
+
+
 
   useEffect(() => {
     async function fetchLogement() {
@@ -79,6 +95,108 @@ export default function LogementDetails() {
     fetchLogement();
   }, [slug]);
 
+  useEffect(() => {
+    async function fetchUserType() {
+      if (!user) return;
+      
+      try {
+        // Vérifier d'abord dans la collection des colocataires
+        const locataireResult = await databases.listDocuments(
+          APPWRITE_DATABASE_ID,
+          process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_LOCATAIRE_ID!,
+          [Query.equal('userid', user.$id)]
+        );
+        
+        if (locataireResult.documents.length > 0) {
+          console.log('✅ Utilisateur trouvé dans la collection des colocataires');
+          setUserAccountType(2);
+          setDebugInfo({
+            message: "Utilisateur identifié comme colocataire",
+            documents: locataireResult.documents
+          });
+          return;
+        }
+        
+        // Sinon vérifier dans la collection des propriétaires
+        const proprioResult = await databases.listDocuments(
+          APPWRITE_DATABASE_ID,
+          process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_PROPRIO_ID!,
+          [Query.equal('userid', user.$id)]
+        );
+        
+        if (proprioResult.documents.length > 0) {
+          console.log('✅ Utilisateur trouvé dans la collection des propriétaires');
+          setUserAccountType(1);
+          return;
+        }
+        
+        setUserAccountType(null);
+      } catch (error) {
+        console.error('❌ Erreur lors de la vérification du type de compte:', error);
+      }
+    }
+    
+    fetchUserType();
+  }, [user]);
+
+    // Vérifier si l'utilisateur a déjà fait une demande pour ce logement
+    useEffect(() => {
+      async function checkRequests() {
+        if (!user || !logement) return;
+    
+        try {
+          // 1. D'abord, trouver le document locataire correspondant à l'utilisateur
+          const locataireResponse = await databases.listDocuments(
+            APPWRITE_DATABASE_ID,
+            process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_LOCATAIRE_ID!,
+            [Query.equal('userid', user.$id)]
+          );
+          
+          if (locataireResponse.documents.length === 0) {
+            // L'utilisateur n'a pas de document locataire (peut-être un proprio)
+            console.log("Utilisateur n'est pas un locataire");
+            return;
+          }
+          
+          const locataireDocId = locataireResponse.documents[0].$id;
+          
+          // 2. Vérifier s'il existe une demande
+          const exists = await checkExistingContactRequest(locataireDocId, logement.$id);
+          setHasExistingRequest(exists);
+        } catch (error) {
+          console.error("Erreur lors de la vérification des demandes:", error);
+        }
+      }
+    
+      checkRequests();
+    }, [user, logement]);
+
+    const handleContactRequest = async (message: string, date?: Date) => {
+      if (!user) {
+        toast.error("Veuillez vous connecter pour contacter le propriétaire.");
+        router.push('/login');
+        return;
+      }
+    
+      if (!logement) {
+        toast.error("Impossible de trouver les informations du logement.");
+        return;
+      }
+    
+      setSubmitting(true);
+      try {
+        await createContactRequest(user.$id, logement.$id, message, date);
+        toast.success("Votre demande a été envoyée au propriétaire.");
+        setContactModalOpen(false);
+        setHasExistingRequest(true);
+      } catch (error) {
+        toast.error("Erreur lors de l'envoi de votre demande. Veuillez réessayer.");
+        console.error(error);
+      } finally {
+        setSubmitting(false);
+      }
+    };
+
   // Le reste du composant reste inchangé
   if (loading) {
     return (
@@ -109,6 +227,18 @@ export default function LogementDetails() {
     const today = new Date();
     return dateDispo <= today;
   };
+
+  const getContactButtonState = () => {
+    if (!user) return { disabled: false, text: "Je souhaite être contacté", needsLogin: true };
+    
+    // ⚠️ CORRECTION: Utiliser userAccountType au lieu de isColocataire directement
+    if (!isColocataire) return { disabled: true, text: "Réservé aux colocataires", needsLogin: false };
+    if (hasExistingRequest) return { disabled: true, text: "Demande déjà envoyée", needsLogin: false };
+    
+    return { disabled: false, text: "Je souhaite être contacté", needsLogin: false };
+  };
+
+  const contactButtonState = getContactButtonState();
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -246,44 +376,68 @@ export default function LogementDetails() {
 
           {/* Partie droite: Réservation et proprio */}
           <div className="space-y-6">
-            <Card className="p-6 bg-[#19191B] border-0">
-              <div className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-bold">Réserver ce logement</h2>
-                  <div className="text-primary font-bold">
-                    {isDisponible() ? "Disponible" : "À venir"}
-                  </div>
+          <Card className="p-6 bg-[#19191B] border-0">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-bold">Réserver ce logement</h2>
+                <div className="text-primary font-bold">
+                  {isDisponible() ? "Disponible" : "À venir"}
                 </div>
-
-                {/* Prix s'il existe */}
-                {logement.prix && (
-                  <div className="text-xl font-bold text-center">
-                    {logement.prix}€/nuit
-                  </div>
-                )}
-
-                {/* Dates de disponibilité */}
-                <div className="py-2 border-t border-b border-gray-800">
-                  <div className="flex items-center mb-1">
-                    <Calendar className="mr-2 h-4 w-4 text-primary" />
-                    <span className="text-sm">
-                      Disponible {isDisponible() ? "maintenant" : `à partir du ${format(new Date(logement.datedispo), 'dd/MM/yyyy', { locale: fr })}`}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Bouton de sélection de date */}
-                <Button variant="outline" className="w-full justify-start">
-                  <Calendar className="mr-2 h-4 w-4" />
-                  Sélectionner une date d'arrivée
-                </Button>
-
-                {/* Bouton de contact */}
-                <Button className="w-full bg-primary hover:bg-primary/90">
-                  Je souhaite être contacté
-                </Button>
               </div>
-            </Card>
+
+              {/* Prix s'il existe */}
+              {logement.prix && (
+                <div className="text-xl font-bold text-center">
+                  {logement.prix}€/mois
+                </div>
+              )}
+
+              {/* Dates de disponibilité */}
+              <div className="py-2 border-t border-b border-gray-800">
+                <div className="flex items-center mb-1">
+                  <Calendar className="mr-2 h-4 w-4 text-primary" />
+                  <span className="text-sm">
+                    Disponible {isDisponible() ? "maintenant" : `à partir du ${format(new Date(logement.datedispo), 'dd/MM/yyyy', { locale: fr })}`}
+                  </span>
+                </div>
+              </div>
+
+              {/* Message spécifique pour les propriétaires */}
+              {user && !isColocataire && (
+                <Alert variant="destructive" className="bg-amber-900/20 border-amber-800 text-amber-400 mb-2">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Seuls les utilisateurs avec un compte colocataire peuvent faire une demande.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Bouton de contact avec états dynamiques */}
+              <Button 
+                className="w-full bg-primary hover:bg-primary/90"
+                disabled={contactButtonState.disabled}
+                onClick={() => {
+                  if (contactButtonState.needsLogin) {
+                    toast.error("Veuillez vous connecter pour contacter le propriétaire");
+                    router.push('/login');
+                    return;
+                  }
+                  if (!contactButtonState.disabled) {
+                    setContactModalOpen(true);
+                  }
+                }}
+              >
+                {contactButtonState.text}
+              </Button>
+              
+              {!user && (
+                <p className="text-xs text-center text-gray-400 mt-2">
+                  Connectez-vous pour contacter le propriétaire
+                </p>
+              )}
+            </div>
+          </Card>
+
 
             {/* À propos du propriétaire */}
             <Card className="p-6 bg-[#19191B] border-0">
@@ -317,7 +471,14 @@ export default function LogementDetails() {
           </div>
         </div>
       </div>
-
+      {isColocataire && (
+          <ContactModal 
+            isOpen={contactModalOpen}
+            onClose={() => setContactModalOpen(false)}
+            onSubmit={handleContactRequest}
+            isLoading={submitting}
+          />
+        )}
       <Footer />
     </div>
   );
