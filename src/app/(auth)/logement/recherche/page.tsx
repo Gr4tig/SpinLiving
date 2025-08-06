@@ -32,11 +32,11 @@ const Index = () => {
 
         <div className="mx-auto relative z-10">
           <div className="mb-12">
-            <h1 className="text-3xl font-semibold text-white text-gradient mb-6">
-            Rechercher un logement
+            <h1 className="text-3xl font-semibold text-white text-gradient mb-6 text-left">
+              Rechercher un logement
             </h1>
-            <p className="text-lg text-white/80 mx-auto mb-14">
-            Trouvez la colocation idéale pour votre séjour de courte durée
+            <p className="text-lg text-white/80 mb-14 text-left">
+              Trouvez la colocation idéale pour votre séjour de courte durée
             </p>
             <div className="max-w-4xl mx-auto flex justify-center">
               <HeroSearch />

@@ -749,19 +749,19 @@ export async function getContactRequestsForColocataire(colocataireId: string): P
 export async function updateContactRequestStatus(
   requestId: string,
   newStatus: 'pending' | 'accepted' | 'rejected'
-): Promise<ContactRequest> {
+): Promise<any> {
   try {
     console.log('📝 Mise à jour du statut de la demande:', { requestId, newStatus });
     
     const updated = await databases.updateDocument(
       APPWRITE_DATABASE_ID,
-      APPWRITE_COLLECTION_CONTACT_REQUESTS_ID,
+      process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_CONTACT_REQUESTS_ID!,
       requestId,
-      { statut: newStatus }
+      { Statut: newStatus }  // Notez la majuscule sur Statut pour correspondre à votre structure
     );
     
     console.log('✅ Statut de la demande mis à jour avec succès');
-    return updated as unknown as ContactRequest;
+    return updated;
   } catch (error) {
     console.error('❌ Erreur lors de la mise à jour du statut:', error);
     throw new Error('Impossible de mettre à jour le statut de la demande');
