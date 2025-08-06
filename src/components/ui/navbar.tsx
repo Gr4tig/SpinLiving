@@ -37,7 +37,8 @@ export function Navbar() {
     <nav className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl border-2 border-b-white/10 border-t-0 border-l-0 border-r-0 bg-secondary/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
+        <div className="flex items-center">
+          <Link href="/">
             <Image
               src="/logo.png"
               alt="Spin Living"
@@ -45,7 +46,8 @@ export function Navbar() {
               height={100}
               priority
             />
-          </div>
+          </Link>
+        </div>
           
           {/* Desktop */}
           <div className="hidden md:flex items-center space-x-4">

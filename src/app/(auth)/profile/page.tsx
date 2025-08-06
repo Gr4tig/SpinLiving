@@ -90,7 +90,7 @@ export default function Profile() {
                             </Link>
                           </Button>
                           <Button variant="outline" className="w-full justify-start" asChild>
-                            <Link href="/listings">
+                            <Link href="/mes-annonces">
                               <List className="mr-2 h-4 w-4" />
                               Mes annonces
                             </Link>

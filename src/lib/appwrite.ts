@@ -50,6 +50,7 @@ export type LogementData = {
   datedispo: string; // ISO date
   prix: string;
   publicId?: string; // Identifiant public pour les URLs
+  $createdAt?: string; // Date ISO de création
 };
 
 export type AdresseData = {
@@ -298,6 +299,7 @@ export async function getLogementComplet(logementId: string): Promise<LogementCo
       datedispo: logement.datedispo,
       prix: logement.prix,
       publicId: logement.publicId || 'no-slug', // Fallback si pas de publicId
+      $createdAt: logement.$createdAt,
       adresse,
       photos,
     };
@@ -801,5 +803,68 @@ export async function getUserAccountType(userId: string): Promise<number | strin
   } catch (error) {
     console.error('❌ Erreur lors de la récupération du type de compte:', error);
     return null;
+  }
+}
+
+export async function deleteLogement(logementId: string): Promise<void> {
+  try {
+    console.log('🗑️ Suppression du logement:', logementId);
+    
+    // 1. Récupérer l'adresse associée et la supprimer
+    try {
+      const adressesResponse = await databases.listDocuments(
+        APPWRITE_DATABASE_ID,
+        process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_ADRESSES_ID!,
+        [Query.equal('logement', logementId)]
+      );
+      
+      // Supprimer chaque adresse trouvée
+      for (const adresse of adressesResponse.documents) {
+        await databases.deleteDocument(
+          APPWRITE_DATABASE_ID,
+          process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_ADRESSES_ID!,
+          adresse.$id
+        );
+        console.log('✅ Adresse supprimée:', adresse.$id);
+      }
+    } catch (error) {
+      console.error('⚠️ Erreur lors de la suppression des adresses:', error);
+      // Continuer malgré l'erreur
+    }
+    
+    // 2. Supprimer les demandes de contact associées
+    try {
+      const contactRequestsResponse = await databases.listDocuments(
+        APPWRITE_DATABASE_ID,
+        process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_CONTACT_REQUESTS_ID!,
+        [Query.equal('logement', logementId)]
+      );
+      
+      // Supprimer chaque demande trouvée
+      for (const request of contactRequestsResponse.documents) {
+        await databases.deleteDocument(
+          APPWRITE_DATABASE_ID,
+          process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_CONTACT_REQUESTS_ID!,
+          request.$id
+        );
+        console.log('✅ Demande de contact supprimée:', request.$id);
+      }
+    } catch (error) {
+      console.error('⚠️ Erreur lors de la suppression des demandes de contact:', error);
+      // Continuer malgré l'erreur
+    }
+    
+    // 3. Enfin, supprimer le logement lui-même
+    await databases.deleteDocument(
+      APPWRITE_DATABASE_ID,
+      process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_LOGEMENT_ID!,
+      logementId
+    );
+    
+    console.log('✅ Logement supprimé avec succès');
+    return;
+  } catch (error) {
+    console.error('❌ Erreur lors de la suppression du logement:', error);
+    throw new Error('Impossible de supprimer le logement');
   }
 }

@@ -3,10 +3,12 @@
 import { Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthProvider";
-import { confirmVerificationEmail } from "@/lib/appwrite";
+import { confirmVerificationEmail, sendVerificationEmail } from "@/lib/appwrite";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useState, useEffect } from "react";
+import { Loader2 } from "lucide-react";
 
 // Contenu qui utilise useSearchParams
 function VerifyEmailContent() {
@@ -16,10 +18,49 @@ function VerifyEmailContent() {
   const router = useRouter();
   const [verifying, setVerifying] = useState(false);
   const [resending, setResending] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  
+  // État pour limiter l'envoi d'emails
+  const [lastEmailSent, setLastEmailSent] = useState<number | null>(null);
+  const [countdown, setCountdown] = useState<number>(0);
   
   // Récupérer les paramètres de vérification
   const userId = searchParams?.get("userId");
   const secret = searchParams?.get("secret");
+  
+  // Effet pour gérer le countdown
+  useEffect(() => {
+    // Récupérer la valeur du localStorage au chargement
+    const storedTime = localStorage.getItem('lastVerificationEmailSent');
+    if (storedTime) {
+      const lastTime = parseInt(storedTime, 10);
+      const currentTime = Date.now();
+      const elapsedSeconds = Math.floor((currentTime - lastTime) / 1000);
+      
+      if (elapsedSeconds < 60) {
+        setLastEmailSent(lastTime);
+        setCountdown(60 - elapsedSeconds);
+      }
+    }
+    
+    // Timer pour mettre à jour le countdown
+    let timer: NodeJS.Timeout | null = null;
+    if (countdown > 0) {
+      timer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev <= 1) {
+            clearInterval(timer!);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [countdown]);
   
   // Fonction pour vérifier le token
   const handleVerifyToken = async (userId: string, secret: string) => {
@@ -61,11 +102,24 @@ function VerifyEmailContent() {
     }
   }, [user, isVerified, loading, router]);
 
-  // Fonction pour renvoyer l'email de vérification
+  // Fonction pour renvoyer l'email de vérification avec limitation
   const handleResendEmail = async () => {
+    // Vérifier si le délai d'attente est écoulé
+    if (countdown > 0) {
+      toast.error(`Veuillez attendre ${countdown} secondes avant de demander un nouvel email`);
+      return;
+    }
+    
     setResending(true);
     try {
       await sendVerificationEmail();
+      
+      // Enregistrer le moment de l'envoi
+      const now = Date.now();
+      setLastEmailSent(now);
+      localStorage.setItem('lastVerificationEmailSent', now.toString());
+      setCountdown(60); // Démarrer le compte à rebours de 60 secondes
+      
       toast.success("Email de vérification envoyé!");
     } catch (error) {
       toast.error("Erreur lors de l'envoi de l'email. Veuillez réessayer.");
@@ -76,6 +130,7 @@ function VerifyEmailContent() {
 
   // Fonction pour vérifier manuellement l'état de vérification
   const checkVerificationStatus = async () => {
+    setCheckingStatus(true);
     toast.info("Vérification de votre statut...");
     
     try {
@@ -91,6 +146,8 @@ function VerifyEmailContent() {
       }
     } catch (error) {
       toast.error("Impossible de vérifier votre statut.");
+    } finally {
+      setCheckingStatus(false);
     }
   };
 
@@ -134,26 +191,39 @@ function VerifyEmailContent() {
           <Button 
             onClick={handleResendEmail} 
             className="w-full"
-            disabled={resending}
+            disabled={resending || countdown > 0}
           >
-            {resending ? "Envoi en cours..." : "Renvoyer l'email de vérification"}
+            {resending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Envoi en cours...
+              </>
+            ) : countdown > 0 ? (
+              `Renvoyer un email (${countdown}s)`
+            ) : (
+              "Renvoyer l'email de vérification"
+            )}
           </Button>
         )}
         <Button 
           variant="outline" 
           className="w-full" 
           onClick={checkVerificationStatus}
+          disabled={checkingStatus}
         >
-          J'ai déjà vérifié mon email
+          {checkingStatus ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Vérification en cours...
+            </>
+          ) : (
+            "J'ai déjà vérifié mon email"
+          )}
         </Button>
       </CardFooter>
     </Card>
   );
 }
-
-// N'oubliez pas d'importer useState ici en haut du fichier
-import { useState, useEffect } from "react";
-import { sendVerificationEmail } from "@/lib/appwrite";
 
 // Composant principal qui enveloppe avec Suspense
 export default function VerifyEmail() {
