@@ -22,7 +22,8 @@ function VerificationFailedContent() {
   }
   
   return (
-    <Card className="w-full max-w-md shadow-xl">
+
+    <Card className="w-full max-w-md shadow-xl bg-secondary">
       <CardHeader className="text-center pb-2">
         <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-red-100">
           <XCircle className="h-10 w-10 text-red-600" />
@@ -54,13 +55,14 @@ function VerificationFailedContent() {
         </Button>
       </CardFooter>
     </Card>
+
   );
 }
 
 // Composant principal qui utilise Suspense
 export default function VerificationFailed() {
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-r from-blue-50 to-indigo-50">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-secondary">
       <Suspense fallback={
         <Card className="w-full max-w-md shadow-xl p-8 text-center">
           <div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full mx-auto"></div>
