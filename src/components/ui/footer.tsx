@@ -1,72 +1,64 @@
 'use client';
 
 import Link from 'next/link';
-import { Mail, Phone, MapPin, Instagram, Facebook, Twitter } from 'lucide-react';
-
+import { Mail, Phone, MapPin, Instagram, Facebook, Linkedin } from 'lucide-react';
+import Image from 'next/image';
+import { FaTiktok } from "react-icons/fa";
+import { NewsletterSignup } from '@/components/ui/newsletter-signup';
 
 export function Footer() {
   return (
     <footer className="bg-secondary/30 pt-12 pb-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 items-center ">
           <div>
-            <h3 className="text-xl font-semibold text-gradient mb-4">Spin Living</h3>
-            <p className="text-muted-foreground mb-4">
-              La solution de colocation courte durée pour jeunes actifs et étudiants en alternance.
-            </p>
+            <div className="flex flex-col mb-6">
+              <Link href="/">
+                <Image
+                  src="/logo2.png"
+                  alt="Spin Living"
+                  width={130}
+                  height={130}
+                  priority
+                />
+              </Link>
+            </div>
             <div className="flex space-x-4">
-              <a href="#" className="text-white hover:text-primary">
-                <Instagram size={20} />
+              <a href="https://www.instagram.com/spinliving/" className="text-white hover:text-primary">
+                <Instagram size={25} />
+              </a>
+              <a href="https://www.linkedin.com/company/spin-living/" className="text-white hover:text-primary">
+                <Linkedin size={25} />
               </a>
               <a href="#" className="text-white hover:text-primary">
-                <Facebook size={20} />
+                <FaTiktok size={25} />
               </a>
               <a href="#" className="text-white hover:text-primary">
-                <Twitter size={20} />
+                <Facebook size={25} />
               </a>
             </div>
+            <div className='flex mt-6'>
+              <Mail size={18} className="mr-2 text-white" />
+              <p className='font-extralight'>contact@spinliving.fr</p>
+            </div>
+          </div>
+
+          <div>
+          {/* Utilisation du composant NewsletterSignup */}
+          <NewsletterSignup />
           </div>
           
-          <div>
-            <h3 className="text-lg font-semibold text-white mb-4">Liens rapides</h3>
+          <div className='justify-self-center'>
+            <h3 className="text-lg font-semibold text-white mb-4">Informations légales</h3>
             <ul className="space-y-2">
-              <li>
-                <Link href="/" className="text-muted-foreground hover:text-primary">
-                  Accueil
-                </Link>
+              <li className="flex items-center font-extralight hover:text-primary">
+                <a href="">Mentions légales</a>
               </li>
-              <li>
-                <Link href="/logement/recherche" className="text-muted-foreground hover:text-primary">
-                  Rechercher un logement
-                </Link>
+              <li className="flex items-center text-muted-foreground font-extralight hover:text-primary">
+                <a href="">Conditions générales d'utilisation</a>
               </li>
-              <li>
-                <Link href="/login" className="text-muted-foreground hover:text-primary">
-                  Se connecter
-                </Link>
-              </li>
-              <li>
-                <Link href="/register" className="text-muted-foreground hover:text-primary">
-                  S'inscrire
-                </Link>
-              </li>
-            </ul>
-          </div>
-          
-          <div>
-            <h3 className="text-lg font-semibold text-white mb-4">Contact</h3>
-            <ul className="space-y-2">
-              <li className="flex items-center text-muted-foreground">
-                <MapPin size={18} className="mr-2 text-primary" />
-                <span>Paris, France</span>
-              </li>
-              <li className="flex items-center text-muted-foreground">
-                <Mail size={18} className="mr-2 text-primary" />
-                <span>contact@spinliving.com</span>
-              </li>
-              <li className="flex items-center text-muted-foreground">
-                <Phone size={18} className="mr-2 text-primary" />
-                <span>+33 1 23 45 67 89</span>
+              <li className="flex items-center text-muted-foreground font-extralight hover:text-primary">
+                <a href="">Données personnelles</a>
               </li>
             </ul>
           </div>

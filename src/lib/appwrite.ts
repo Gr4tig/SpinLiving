@@ -1009,3 +1009,22 @@ export async function deleteLogement(logementId: string): Promise<void> {
   }
 }
 
+
+/**
+ * Ajoute un email à la liste de diffusion newsletter Email à ajouter à la newsletter returns Document créé */
+export const subscribeToNewsletter = async (email: string) => {
+  try {
+    const response = await databases.createDocument(
+      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
+      process.env.NEXT_PUBLIC_APPWRITE_NEWSLETTER_COLLECTION_ID!,
+      ID.unique(),
+      {
+        email,
+      }
+    );
+    return response;
+  } catch (error) {
+    console.error("Error subscribing to newsletter:", error);
+    throw error;
+  }
+};
