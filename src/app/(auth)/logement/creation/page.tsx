@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "@/components/ui/calendar"; // Votre composant personnalisé
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ArrowLeft, CalendarIcon, Upload, MapPin, Hash, Ruler, Home, Building, Euro } from "lucide-react";
+import { ArrowLeft, CalendarIcon, Upload, MapPin, Hash, Ruler, Home, Euro } from "lucide-react";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +26,8 @@ import {
   equipementMapping
 } from "@/lib/appwrite";
 import { Checkbox } from "@/components/ui/checkbox"; // Utilisation du composant Checkbox de votre UI kit
+import { CityAutocomplete } from "@/components/ui/city-autocomplete"; // Ajout de l'import pour CityAutocomplete
+import { CityData } from "@/lib/geo-service"; // Ajout de l'import pour le type CityData
 
 type ImagePreview = {
   url: string;
@@ -40,6 +42,7 @@ export default function CreationLogement() {
   const [adresse, setAdresse] = useState("");
   const [ville, setVille] = useState("");
   const [codePostal, setCodePostal] = useState("");
+  const [selectedCityData, setSelectedCityData] = useState<CityData | null>(null); // Nouvel état pour stocker les données de ville
   
   const [nombreColoc, setNombreColoc] = useState("");
   const [m2, setM2] = useState("");
@@ -169,10 +172,20 @@ export default function CreationLogement() {
         prix,
       };
 
+      // Enrichir adresseData avec les coordonnées géographiques si disponibles
       const adresseData: AdresseData = {
         ville,
         adresse,
-        code_postal: codePostal
+        code_postal: codePostal,
+        // Ajouter les données géographiques si disponibles
+        ...(selectedCityData && {
+          ville_code: selectedCityData.code,
+          departement: selectedCityData.codeDepartement,
+          ...(selectedCityData.centre && {
+            latitude: selectedCityData.centre.coordinates[1],  // La latitude est la 2ème coordonnée
+            longitude: selectedCityData.centre.coordinates[0], // La longitude est la 1ère coordonnée
+          }),
+        }),
       };
 
       // Utiliser la nouvelle fonction de création qui gère les 3 collections
@@ -312,19 +325,23 @@ export default function CreationLogement() {
                     </div>
                   </div>
                   
-                  {/* Ville */}
+                  {/* Ville - Remplacé par le composant CityAutocomplete */}
                   <div className="space-y-2">
-                    <Label htmlFor="ville">Ville</Label>
-                    <div className="relative">
-                      <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="ville"
-                        placeholder="Paris"
-                        className="pl-10 bg-white/10 border-white/20"
-                        value={ville}
-                        onChange={(e) => setVille(e.target.value)}
-                      />
-                    </div>
+                    <CityAutocomplete
+                      value={ville}
+                      onChange={(value, cityData) => {
+                        setVille(value);
+                        setSelectedCityData(cityData || null);
+                        
+                        // Si les données de ville sont disponibles, mettre à jour le code postal
+                        if (cityData && cityData.codesPostaux && cityData.codesPostaux.length > 0) {
+                          setCodePostal(cityData.codesPostaux[0]);
+                        }
+                      }}
+                      label="Ville"
+                      placeholder="Rechercher une ville..."
+                      required
+                    />
                   </div>
                   
                   {/* Code postal */}

@@ -113,11 +113,8 @@ export function LogementCard({ logement, distance }: LogementCardProps) {
             {isDisponible() ? "Disponible" : "Bientôt disponible"}
           </span>
         </div>
-        <div>
-        {distance !== undefined ? distance : logement.adresse?.distance}
-        </div>
         <button
-          className="mt-auto w-full bg-[#ff5734] hover:bg-[#e94c2d] text-white font-semibold py-2 rounded-lg transition"
+          className="mt-auto w-full cursor-pointer bg-[#ff5734] hover:bg-[#e94c2d] text-white font-semibold py-2 rounded-lg transition"
           onClick={() => router.push(`/logement/${logement.publicId || logement.$id}`)}
         >
           Voir détails

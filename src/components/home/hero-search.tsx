@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarIcon, Search } from 'lucide-react';
@@ -10,9 +9,23 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
 import { DateRange } from 'react-day-picker';
+import { CityAutocomplete } from '@/components/ui/city-autocomplete';
+
+// Type pour les données de ville
+interface CityData {
+  nom: string;
+  code: string;
+  codeDepartement: string;
+  codesPostaux: string[];
+  population: number;
+  centre?: {
+    coordinates: [number, number]; // [longitude, latitude]
+  };
+}
 
 export function HeroSearch() {
   const [city, setCity] = useState('');
+  const [cityData, setCityData] = useState<CityData | null>(null);
   const [dateRange, setDateRange] = useState<DateRange>({
     from: undefined,
     to: undefined,
@@ -21,24 +34,46 @@ export function HeroSearch() {
   
   const router = useRouter();
 
+  // Construire l'URL et rediriger vers la page de recherche
   const handleSearch = () => {
+    // Créer un nouvel objet URLSearchParams
     const params = new URLSearchParams();
     
-    if (city) {
-      params.append('city', city);
+    // Ajouter les paramètres de ville si définis
+    if (city && city.trim() !== '') {
+      params.append('ville', city);
+      
+      // Ajouter le code INSEE si disponible
+      if (cityData?.code) {
+        params.append('villeCode', cityData.code);
+      }
+      
+      // Ajouter les coordonnées et activer la recherche par rayon si disponibles
+      if (cityData?.centre) {
+        params.append('latitude', cityData.centre.coordinates[1].toString());
+        params.append('longitude', cityData.centre.coordinates[0].toString());
+        params.append('distanceMax', '10'); // Distance par défaut: 10km
+        params.append('rechercheParRayon', 'true');
+      }
     }
     
+    // Ajouter la date de disponibilité minimale si définie
     if (dateRange.from) {
-      params.append('from', dateRange.from.toISOString());
+      const formattedDate = dateRange.from.toISOString().split('T')[0]; // Format YYYY-MM-DD
+      params.append('dateDispoMin', formattedDate);
     }
     
-    if (dateRange.to) {
-      params.append('to', dateRange.to.toISOString());
-    }
+    // Construire l'URL complète
+    const searchUrl = `/logement/recherche${params.toString() ? `?${params.toString()}` : ''}`;
     
-    router.push(`/logement/recherche?${params.toString()}`);
+    // Log pour déboguer
+    console.log(`🔍 Redirection vers: ${searchUrl}`);
+    
+    // Rediriger vers la page de recherche
+    router.push(searchUrl);
   };
 
+  // Formatage de l'affichage des dates
   const formatDateDisplay = () => {
     if (dateRange.from && dateRange.to) {
       return `${format(dateRange.from, 'dd MMM', { locale: fr })} - ${format(dateRange.to, 'dd MMM', { locale: fr })}`;
@@ -55,11 +90,17 @@ export function HeroSearch() {
     <div className="glass-morphism backdrop-blur-xl bg-secondary/50 border-white/30 border-1 rounded-4xl pt-56 sm:p-5 max-w-5xl w-full mx-auto">
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1">
-          <Input
-            placeholder="Rechercher une ville"
-            className="w-full rounded-2xl p-7 bg-white border-primary text-secondary placeholder:text-sm"
+          <CityAutocomplete
             value={city}
-            onChange={(e) => setCity(e.target.value)}
+            onChange={(value, cityDataObj) => {
+              setCity(value);
+              setCityData(cityDataObj || null);
+            }}
+            placeholder="Rechercher une ville"
+            label=""
+            required={false}
+            inputClassName="p-7 rounded-2xl bg-white border-primary text-secondary placeholder:text-sm pl-16"
+            iconClassName="text-secondary left-7 h-5 w-5"
           />
         </div>
         
@@ -78,7 +119,10 @@ export function HeroSearch() {
           </PopoverContent>
         </Popover>
         
-        <Button onClick={handleSearch} className="sm:w-auto p-7 rounded-2xl bg-primary">
+        <Button 
+          onClick={handleSearch} 
+          className="sm:w-auto p-7 rounded-2xl bg-primary"
+        >
           <Search className="h-4 w-4 mr-2" />
           Rechercher
         </Button>
