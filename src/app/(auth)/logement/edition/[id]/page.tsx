@@ -31,6 +31,8 @@ import { AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { databases, APPWRITE_DATABASE_ID, APPWRITE_COLLECTION_LOGEMENT_ID, APPWRITE_COLLECTION_ADRESSES_ID, APPWRITE_COLLECTION_PHOTOSAPPART_ID } from "@/lib/appwrite";
 import { Query } from "appwrite";
+import { CityAutocomplete } from "@/components/ui/city-autocomplete";
+import { CityData } from "@/lib/geo-service";
 
 type ImagePreview = {
   url: string;
@@ -67,6 +69,7 @@ export default function EditionLogement() {
   });
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [selectedCityData, setSelectedCityData] = useState<CityData | null>(null);
 
   // Chargement initial des données du logement
   useEffect(() => {
@@ -251,11 +254,20 @@ const handleSubmit = async (e: React.FormEvent) => {
       // 3. Mise à jour de l'adresse
       try {
         const adresseData = {
-          ville,
-          adresse,
-          code_postal: codePostal,
-          logement: logementId
-        };
+            ville,
+            adresse,
+            code_postal: codePostal,
+            logement: logementId,
+            // Ajouter les données géographiques si disponibles
+            ...(selectedCityData && {
+              ville_code: selectedCityData.code,
+              departement: selectedCityData.codeDepartement,
+              ...(selectedCityData.centre && {
+                latitude: selectedCityData.centre.coordinates[1],  // La latitude est la 2ème coordonnée
+                longitude: selectedCityData.centre.coordinates[0], // La longitude est la 1ère coordonnée
+              }),
+            }),
+          };
         
         // Trouver le document adresse existant
         const adressesResult = await databases.listDocuments(
@@ -537,18 +549,22 @@ const handleSubmit = async (e: React.FormEvent) => {
                   
                   {/* Ville */}
                   <div className="space-y-2">
-                    <Label htmlFor="ville">Ville</Label>
-                    <div className="relative">
-                      <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        id="ville"
-                        placeholder="Paris"
-                        className="pl-10 bg-white/10 border-white/20"
+                    <CityAutocomplete
                         value={ville}
-                        onChange={(e) => setVille(e.target.value)}
-                      />
+                        onChange={(value, cityData) => {
+                        setVille(value);
+                        setSelectedCityData(cityData || null);
+                        
+                        // Si les données de ville sont disponibles, mettre à jour le code postal
+                        if (cityData && cityData.codesPostaux && cityData.codesPostaux.length > 0) {
+                            setCodePostal(cityData.codesPostaux[0]);
+                        }
+                        }}
+                        label="Ville"
+                        placeholder="Rechercher une ville..."
+                        required
+                    />
                     </div>
-                  </div>
                   
                   {/* Code postal */}
                   <div className="space-y-2">

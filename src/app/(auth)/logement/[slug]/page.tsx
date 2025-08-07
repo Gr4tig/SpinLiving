@@ -17,6 +17,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { ContactModal } from "@/components/logement/ContactModal";
 import { Query } from "appwrite";
 
+
 // Fonction pour obtenir l'icône d'un équipement
 function getEquipementIcon(type: string) {
   switch(type) {
