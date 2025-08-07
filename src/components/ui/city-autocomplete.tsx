@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 
 interface CityData {
   nom: string;
@@ -29,6 +30,12 @@ interface CityAutocompleteProps {
   placeholder?: string;
   required?: boolean;
   disabled?: boolean;
+  className?: string;             // Pour le conteneur principal
+  inputClassName?: string;        // Pour l'input spécifiquement
+  popoverClassName?: string;      // Pour le popover des résultats
+  iconClassName?: string;         // Pour l'icône Building
+  placeholderClassName?: string;
+  showIcon?: boolean;             // Option pour masquer l'icône
 }
 
 export function CityAutocomplete({
@@ -37,7 +44,13 @@ export function CityAutocomplete({
   label = "Ville",
   placeholder = "Rechercher une ville...",
   required = false,
-  disabled = false
+  disabled = false,
+  className = "",
+  inputClassName = "",
+  popoverClassName = "",
+  iconClassName = "",
+  placeholderClassName = "",
+  showIcon = true,
 }: CityAutocompleteProps) {
   const [inputValue, setInputValue] = useState(value);
   const [open, setOpen] = useState(false);
@@ -112,16 +125,27 @@ export function CityAutocomplete({
   };
 
   return (
-    <div className="space-y-2 w-full bg-secondary">
+    <div className={cn("space-y-2 w-full", className)}>
       {label && <Label htmlFor="city-input">{label}</Label>}
       
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <div className="relative w-full bg-secondary">
-            <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <div className="relative w-full">
+            {showIcon && (
+              <Building 
+                className={cn(
+                  "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground", 
+                  iconClassName
+                )} 
+              />
+            )}
             <Input
               id="city-input"
-              className="pl-10 bg-white/20 border-white/20 w-full"
+              className={cn(
+                showIcon ? "pl-16" : "", // Augmenté de pl-10 à pl-16
+                "bg-white/20 border-white/20 w-full", // Ajout de padding au placeholder
+                inputClassName
+              )}
               placeholder={placeholder}
               value={inputValue}
               onChange={(e) => handleInputChange(e.target.value)}
@@ -135,14 +159,19 @@ export function CityAutocomplete({
           </div>
         </PopoverTrigger>
         
-        <PopoverContent className="p-0 w-[400px] max-h-[300px] bg-secondary overflow-y-auto">
+        <PopoverContent 
+          className={cn(
+            "p-0 w-[400px] max-h-[300px] bg-secondary overflow-y-auto", 
+            popoverClassName
+          )}
+        >
           <Command>
-            <div className="sticky">
-            <CommandInput 
-              placeholder="Rechercher une ville..."
-              value={inputValue}
-              onValueChange={handleInputChange}
-            />
+            <div className="sticky top-0">
+              <CommandInput 
+                placeholder="Rechercher une ville..."
+                value={inputValue}
+                onValueChange={handleInputChange}
+              />
             </div>
             <CommandEmpty>
               {inputValue.length < 2 
@@ -155,7 +184,7 @@ export function CityAutocomplete({
                   key={city.code}
                   value={city.nom}
                   onSelect={() => handleSelectCity(city)}
-                  className="border-b border-white/10 cursor-pointer hover:bg-white/10 transition-colors" // <-- Classes ajoutées ici
+                  className="border-b border-white/10 cursor-pointer hover:bg-white/10 transition-colors"
                 >
                   <div className="flex flex-col">
                     <span className="font-medium">{city.nom}</span>
