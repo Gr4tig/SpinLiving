@@ -1,19 +1,34 @@
 "use client";
 
+import { useState } from "react";
 import { MapPin, Bed, ShowerHead, Users, CalendarDays } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { LogementCompletData } from "@/lib/appwrite";
-import { useRouter } from "next/navigation"; // Utilisez navigation, pas router
+import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
 
-export function LogementCard({ logement }: { logement: LogementCompletData }) {
+interface LogementCardProps {
+  logement: LogementCompletData;
+  distance?: number; // Distance en km (optionnel)
+}
+
+export function LogementCard({ logement, distance }: LogementCardProps) {
   const router = useRouter();
+  const [imageError, setImageError] = useState(false);
   
-  // Récupérer la première photo disponible
+  // Récupérer la première photo disponible avec gestion d'erreur améliorée
   const getPhotoUrl = () => {
-    if (logement.photos && (logement.photos["1"] || logement.photos["2"] || logement.photos["3"] || logement.photos["4"] || logement.photos["5"])) {
-      return logement.photos["1"] || logement.photos["2"] || logement.photos["3"] || logement.photos["4"] || logement.photos["5"];
-    }
-    return "/placeholder.jpg";
+    if (!logement.photos) return "/placeholder.jpg";
+    
+    // Essayer chaque photo dans l'ordre jusqu'à en trouver une valide
+    const firstAvailablePhoto = 
+      logement.photos["1"] || 
+      logement.photos["2"] || 
+      logement.photos["3"] || 
+      logement.photos["4"] || 
+      logement.photos["5"];
+    
+    return firstAvailablePhoto || "/placeholder.jpg";
   };
   
   // Déterminer si le logement est disponible
@@ -26,33 +41,64 @@ export function LogementCard({ logement }: { logement: LogementCompletData }) {
     return dateDispo <= today;
   };
 
+  // Construire l'adresse affichée avec gestion d'erreur
+  const getAdresseDisplay = () => {
+    if (!logement.adresse) return "Adresse inconnue";
+    
+    const ville = logement.adresse.ville || "";
+    const adresseDetail = logement.adresse.adresse || "";
+    
+    if (ville && adresseDetail) {
+      return `${ville}, ${adresseDetail}`;
+    } else if (ville) {
+      return ville;
+    } else if (adresseDetail) {
+      return adresseDetail;
+    } else {
+      return "Adresse inconnue";
+    }
+  };
+
   return (
-    <Card className="bg-[#19191b] border-0 rounded-xl shadow-lg overflow-hidden flex flex-col h-full">
-      <div className="relative">
-        <img
-          src={getPhotoUrl()}
-          alt={logement.titre}
-          className="w-full h-44 object-cover"
-        />
-        {logement.prix && (
-          <div className="absolute top-3 right-3 bg-[#ff5734] text-white px-3 py-1 rounded-full text-sm font-semibold shadow">
-            {logement.prix}€/nuit
-          </div>
-        )}
-      </div>
+      <Card className="bg-[#19191b] border-0 rounded-xl shadow-lg overflow-hidden flex flex-col h-full">
+        <div className="relative">
+          <img
+            src={imageError ? "/placeholder.jpg" : getPhotoUrl()}
+            alt={logement.titre}
+            className="w-full h-44 object-cover"
+            onError={() => setImageError(true)}
+          />
+          
+          {/* Badge de prix en haut à droite */}
+          {logement.prix && (
+            <div className="absolute top-3 right-3 bg-[#ff5734] text-white px-3 py-1 rounded-full text-sm font-semibold shadow">
+              {logement.prix}€/nuit
+            </div>
+          )}
+          
+          {/* Badge de distance REPOSITIONNÉ sous le prix */}
+          {((logement as any).distance !== undefined) && (
+            <div className="absolute bottom-3 right-3">
+              <Badge className="bg-black/70 border-0 text-white px-2 py-1">
+                <MapPin className="h-3 w-3 mr-1" />
+                {(logement as any).distance} km
+              </Badge>
+            </div>
+          )}
+        </div>
+  
       <CardContent className="flex flex-col flex-1 px-4 py-4">
         <div className="font-semibold text-lg text-white truncate mb-1">
           {logement.titre}
         </div>
         <div className="flex items-center text-gray-400 text-sm mb-2">
           <MapPin className="h-4 w-4 mr-1" />
-          {logement.adresse ? 
-            `${logement.adresse.ville || ''}, ${logement.adresse.adresse || ''}` : 
-            "Adresse inconnue"}
+          {getAdresseDisplay()}
         </div>
         <div className="text-gray-300 text-sm mb-3 line-clamp-2">
           {logement.description}
         </div>
+        
         <div className="flex items-center gap-4 text-gray-400 text-sm mb-2">
           <span className="flex items-center">
             <Users className="h-4 w-4 mr-1" /> {logement.nombreColoc ?? "?"}
@@ -66,6 +112,9 @@ export function LogementCard({ logement }: { logement: LogementCompletData }) {
           <span className={isDisponible() ? "text-green-400" : "text-[#ff5734]"}>
             {isDisponible() ? "Disponible" : "Bientôt disponible"}
           </span>
+        </div>
+        <div>
+        {distance !== undefined ? distance : logement.adresse?.distance}
         </div>
         <button
           className="mt-auto w-full bg-[#ff5734] hover:bg-[#e94c2d] text-white font-semibold py-2 rounded-lg transition"

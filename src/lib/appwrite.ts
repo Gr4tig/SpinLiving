@@ -58,6 +58,11 @@ export type AdresseData = {
   adresse: string;
   code_postal: string;
   logement?: string; // Relation ID - optionnel car créé après le logement
+  ville_code?: string;       // Code INSEE de la commune
+  latitude?: number;         // Latitude de la ville
+  longitude?: number;        // Longitude de la ville
+  departement?: string;      // Code du département
+  distance?: number;         // Distance in kilometers
 };
 
 export type PhotosAppartData = {
@@ -335,96 +340,231 @@ export async function getLogementByPublicId(publicId: string): Promise<LogementC
 }
 
 /** Rechercher des logements avec filtres */
-export async function rechercherLogements(filtres: {
+export async function rechercherLogementsComplets(filtres: {
   ville?: string;
-  nombreColoc?: number;
-  equipement?: string;
+  villeCode?: string;
+  latitude?: number;
+  longitude?: number;
+  distanceMax?: number;
+  nombreColoc?: number | null;
+  prixMax?: number | null;
+  equipements?: EquipementType[];
   dateDispoMin?: string;
+  rechercheParRayon?: boolean;
 } = {}): Promise<LogementCompletData[]> {
   try {
-    // Préparation des queries pour le logement
-    const logementQueries: any[] = [];
+    console.log("🔍 Recherche avec filtres:", JSON.stringify(filtres, null, 2));
     
-    if (filtres.nombreColoc) {
-      logementQueries.push(Query.equal('nombreColoc', filtres.nombreColoc));
+    let logementIds: string[] = [];
+    let distanceFiltre = false; // Drapeau pour savoir si le filtre de distance a été appliqué
+    
+    // Stockage des distances par ID de logement
+    const distancesMap = new Map<string, number>();
+    
+    // RECHERCHE PAR RAYON: Si activée et coordonnées disponibles
+    if (filtres.rechercheParRayon && filtres.latitude && filtres.longitude && filtres.distanceMax) {
+      console.log(`🌍 Recherche par rayon de ${filtres.distanceMax}km autour de ${filtres.ville || 'point spécifié'}`);
+      distanceFiltre = true; // On marque que le filtre distance sera appliqué ici
+      
+      // 1. Récupérer TOUTES les adresses (sans filtre de ville)
+      const adresses = await databases.listDocuments(
+        APPWRITE_DATABASE_ID,
+        APPWRITE_COLLECTION_ADRESSES_ID,
+        []
+      );
+      
+      console.log(`📍 ${adresses.documents.length} adresses trouvées au total`);
+      
+      // Liste pour stocker les adresses qui passent le filtre
+      const adressesProches: any[] = [];
+      
+      // 2. Filtrer MANUELLEMENT les adresses par distance (éviter filter() complexe)
+      for (const adresse of adresses.documents) {
+        if (!adresse.latitude || !adresse.longitude) continue;
+        
+        // Calcul synchrone de la distance
+        const distance = calculateDistance(
+          filtres.latitude,
+          filtres.longitude,
+          adresse.latitude,
+          adresse.longitude
+        );
+        
+        // Stockage pour tri ultérieur (arrondi à 1 décimale)
+        const distanceArrondie = Math.round(distance * 10) / 10;
+        
+        // Filtre basé sur la distance
+        if (distance <= filtres.distanceMax) {
+          // Stocker la distance dans l'adresse pour le tri
+          adresse.distance = distanceArrondie;
+          adressesProches.push(adresse);
+        }
+      }
+      
+      console.log(`🏙️ ${adressesProches.length} adresses dans un rayon de ${filtres.distanceMax}km`);
+      
+      if (adressesProches.length === 0) {
+        console.log("⚠️ ATTENTION: Aucune adresse trouvée dans ce rayon!");
+        return []; // Retourner tôt si aucune adresse trouvée
+      }
+      
+      // Tri par distance croissante
+      adressesProches.sort((a, b) => a.distance - b.distance);
+      
+      // 3. Extraire les IDs des logements et stocker les distances
+      for (const adresse of adressesProches) {
+        let logementId = null;
+        
+        // Gérer les deux formats possibles de relation
+        if (adresse.logement && typeof adresse.logement === 'object' && adresse.logement.$id) {
+          logementId = adresse.logement.$id;
+        }
+        else if (typeof adresse.logement === 'string') {
+          logementId = adresse.logement;
+        }
+        
+        // Si on a un ID valide, l'ajouter à la liste et stocker la distance
+        if (logementId) {
+          logementIds.push(logementId);
+          distancesMap.set(logementId, adresse.distance);
+        }
+      }
+      
+      console.log(`🏠 ${logementIds.length} logements dans le rayon spécifié`);
+      console.log(`📏 Distances stockées pour ${distancesMap.size} logements`);
+    } 
+    // APPROCHE GÉNÉRALE POUR LES AUTRES RECHERCHES
+    else {
+      // Reste du code pour les autres types de recherche...
+      const logementQueries = [];
+      
+      if (filtres.nombreColoc) {
+        logementQueries.push(Query.equal('nombreColoc', filtres.nombreColoc));
+      }
+      
+      if (filtres.dateDispoMin) {
+        logementQueries.push(Query.greaterThanEqual('datedispo', filtres.dateDispoMin));
+      }
+      
+      if (filtres.equipements?.length === 1) {
+        logementQueries.push(Query.equal('equipement', filtres.equipements[0]));
+      }
+      
+      // Récupérer tous les logements
+      const logements = await databases.listDocuments(
+        APPWRITE_DATABASE_ID,
+        APPWRITE_COLLECTION_LOGEMENT_ID,
+        logementQueries
+      );
+      
+      logementIds = logements.documents.map(doc => doc.$id);
+      console.log(`📋 ${logementIds.length} logements trouvés avec les filtres de base`);
     }
     
-    if (filtres.equipement) {
-      logementQueries.push(Query.equal('equipement', filtres.equipement));
-    }
-    
-    if (filtres.dateDispoMin) {
-      logementQueries.push(Query.greaterThanEqual('datedispo', filtres.dateDispoMin));
-    }
-
-    // Récupérer tous les logements qui correspondent aux critères de base
-    const logements = await databases.listDocuments(
-      APPWRITE_DATABASE_ID,
-      APPWRITE_COLLECTION_LOGEMENT_ID,
-      logementQueries
-    );
-    
-    // Si aucun résultat, retourner un tableau vide
-    if (logements.documents.length === 0) {
+    // AUCUN RÉSULTAT
+    if (logementIds.length === 0) {
       return [];
     }
     
-    // Récupérer toutes les adresses qui correspondent au filtre ville
-    let adressesMatchingVille = null;
-    if (filtres.ville) {
-      adressesMatchingVille = await databases.listDocuments(
-        APPWRITE_DATABASE_ID,
-        APPWRITE_COLLECTION_ADRESSES_ID,
-        [Query.equal('ville', filtres.ville)]
-      );
-      
-      // Si aucune adresse ne correspond à la ville, retourner un tableau vide
-      if (adressesMatchingVille.documents.length === 0) {
-        return [];
+    // RÉCUPÉRATION DES DONNÉES COMPLÈTES POUR CHAQUE LOGEMENT
+    const validLogements: LogementCompletData[] = [];
+    
+    // Traiter chaque logement individuellement
+    for (const id of logementIds) {
+      try {
+        // Récupérer le logement complet
+        const logement = await getLogementComplet(id);
+        
+        if (logement) {
+          // Si on a une distance pour ce logement, l'associer directement au logement
+          if (distancesMap.has(id)) {
+            // Ajouter une propriété distance au logement (plus simple et évite les erreurs TypeScript)
+            (logement as any).distance = distancesMap.get(id);
+            
+            console.log(`📍 Logement ${id}: distance = ${(logement as any).distance}km`);
+          }
+          
+          validLogements.push(logement);
+        }
+      } catch (error) {
+        console.error(`❌ Erreur pour le logement ${id}:`, error);
       }
     }
     
-    // Construire un tableau complet avec les informations associées
-    const logementsComplets = await Promise.all(
-      logements.documents.map(async (logement) => {
-        // Récupérer l'adresse associée au logement
-        const adresses = await databases.listDocuments(
-          APPWRITE_DATABASE_ID,
-          APPWRITE_COLLECTION_ADRESSES_ID,
-          [Query.equal('logement', logement.$id)]
-        );
-        
-        const adresse = adresses.documents.length > 0 ? adresses.documents[0] : undefined;
-        
-        // Si on a un filtre ville et que l'adresse ne correspond pas, ignorer ce logement
-        if (filtres.ville && adressesMatchingVille && 
-            !adressesMatchingVille.documents.some(a => a.$id === adresse?.$id)) {
-          return null;
-        }
-        
-        // Récupérer les photos associées
-        const photosDocs = await databases.listDocuments(
-          APPWRITE_DATABASE_ID,
-          APPWRITE_COLLECTION_PHOTOSAPPART_ID,
-          [Query.equal('logement', logement.$id)]
-        );
-        
-        const photos = photosDocs.documents.length > 0 ? photosDocs.documents[0] : undefined;
-        
-        return {
-          ...logement,
-          adresse,
-          photos
-        } as unknown as LogementCompletData;
-      })
-    );
+    console.log(`✅ ${validLogements.length} logements complets récupérés`);
     
-    // Filtrer les logements nuls (ceux qui ne correspondaient pas au filtre ville)
-    return logementsComplets.filter(Boolean) as LogementCompletData[];
+    // Vérification des distances attachées
+    const avecDistance = validLogements.filter(l => (l as any).distance !== undefined).length;
+    console.log(`🗺️ ${avecDistance}/${validLogements.length} logements ont une distance attachée`);
+    
+    // APPLICATION DES FILTRES CLIENT-SIDE
+    let filteredLogements = validLogements;
+    
+    // Filtre par prix max
+    if (filtres.prixMax) {
+      const avant = filteredLogements.length;
+      filteredLogements = filteredLogements.filter(logement => {
+        const prix = parseInt(logement.prix, 10);
+        return !isNaN(prix) && prix <= filtres.prixMax!;
+      });
+      console.log(`💰 Filtre prix: ${avant} → ${filteredLogements.length} logements`);
+    }
+    
+    // Filtre par équipements multiples
+    if (filtres.equipements && filtres.equipements.length > 0) {
+      const avant = filteredLogements.length;
+      filteredLogements = filteredLogements.filter(logement => {
+        if (!logement.equipement) return false;
+        return filtres.equipements!.every(eq => logement.equipement!.includes(eq));
+      });
+      console.log(`🔌 Filtre équipements: ${avant} → ${filteredLogements.length} logements`);
+    }
+    
+    console.log(`✨ ${filteredLogements.length} logements après application de tous les filtres`);
+    return filteredLogements;
   } catch (error) {
-    console.error('❌ Erreur lors de la recherche de logements', error);
+    console.error('❌ Erreur lors de la recherche de logements:', error);
     return [];
   }
+}
+/**
+ * Calcule la distance en kilomètres entre deux points géographiques
+ * Formule de Haversine avec validations supplémentaires
+ */
+export function calculateDistance(lat1: number | string, lon1: number | string, lat2: number | string, lon2: number | string): number {
+  // Conversion en nombre et validation
+  const latitude1 = typeof lat1 === 'string' ? parseFloat(lat1) : lat1;
+  const longitude1 = typeof lon1 === 'string' ? parseFloat(lon1) : lon1;
+  const latitude2 = typeof lat2 === 'string' ? parseFloat(lat2) : lat2;
+  const longitude2 = typeof lon2 === 'string' ? parseFloat(lon2) : lon2;
+  
+  // Validation des coordonnées
+  if (isNaN(latitude1) || isNaN(longitude1) || isNaN(latitude2) || isNaN(longitude2)) {
+    console.error('❌ Coordonnées invalides dans le calcul de distance:', { lat1, lon1, lat2, lon2 });
+    return Infinity; // Distance infinie = rejeté par le filtre
+  }
+  
+  // Vérification des plages de valeurs attendues pour latitude (-90 à 90) et longitude (-180 à 180)
+  if (Math.abs(latitude1) > 90 || Math.abs(latitude2) > 90 || 
+      Math.abs(longitude1) > 180 || Math.abs(longitude2) > 180) {
+    console.error('⚠️ Coordonnées hors limites (possible inversion lat/lon):', 
+      { lat1: latitude1, lon1: longitude1, lat2: latitude2, lon2: longitude2 });
+  }
+  
+  // Calcul de la distance avec la formule de Haversine
+  const R = 6371; // Rayon de la Terre en km
+  const dLat = (latitude2 - latitude1) * Math.PI / 180;
+  const dLon = (longitude2 - longitude1) * Math.PI / 180;
+  
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(latitude1 * Math.PI / 180) * Math.cos(latitude2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+    
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const distance = R * c; // Distance en km
+  
+  return distance;
 }
 
 // --- AUTH & INSCRIPTION ---
@@ -868,3 +1008,4 @@ export async function deleteLogement(logementId: string): Promise<void> {
     throw new Error('Impossible de supprimer le logement');
   }
 }
+

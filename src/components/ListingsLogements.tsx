@@ -1,66 +1,95 @@
-"use client";
+import React, { useEffect, useState } from 'react';
+import { LogementCompletData, rechercherLogementsComplets } from '@/lib/appwrite';
+import { LogementCard } from '@/components/LogementCard';
+import { Loader2 } from 'lucide-react';
 
-import { useEffect, useState } from "react";
-import { databases, getLogementComplet, LogementCompletData } from "@/lib/appwrite";
-import { LogementCard } from "@/components/LogementCard";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+interface ListingsLogementsProps {
+  searchParams?: any; // Paramètres de recherche
+}
 
-const DB_ID = process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!;
-const COLLECTION_LOGEMENT_ID = process.env.NEXT_PUBLIC_APPWRITE_COLLECTION_LOGEMENT_ID!;
-
-export function ListingsLogements() {
+export function ListingsLogements({ searchParams = {} }: ListingsLogementsProps) {
   const [logements, setLogements] = useState<LogementCompletData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchLogements() {
-      setLoading(true);
       try {
-        // 1. Récupérer les documents de logement de base
-        const res = await databases.listDocuments(DB_ID, COLLECTION_LOGEMENT_ID, []);
+        setLoading(true);
+        console.log("⏳ Chargement des logements avec paramètres:", searchParams);
         
-        // 2. Pour chaque logement, récupérer ses données complètes (adresse + photos)
-        const logementsComplets = await Promise.all(
-          res.documents.map(async (logement) => {
-            return await getLogementComplet(logement.$id) || null;
-          })
-        );
+        // Utiliser la nouvelle fonction basée sur getLogementComplet
+        const results = await rechercherLogementsComplets(searchParams);
         
-        // 3. Filtrer les résultats null
-        setLogements(logementsComplets.filter(Boolean) as LogementCompletData[]);
-
-        // 4. Vérifier si des logements n'ont pas de publicId
-        const needsMigration = logementsComplets.some(
-          (logement) => logement && (!logement.publicId || logement.publicId === 'no-slug')
-        );
-
-        if (needsMigration) {
-          console.warn("Certains logements n'ont pas de publicId. Une migration est recommandée.");
+        console.log(`✅ ${results.length} logements trouvés au total`);
+        
+        // Vérification des résultats pour débogage
+        if (results.length > 0) {
+          console.log("Premier logement:", {
+            id: results[0].$id,
+            titre: results[0].titre,
+            hasAdresse: !!results[0].adresse,
+            hasPhotos: !!results[0].photos,
+            adresseVille: results[0].adresse?.ville || "Non définie",
+            photo1: results[0].photos?.["1"] ? "Oui" : "Non"
+          });
         }
-      } catch (e) {
-        console.error("Erreur lors du chargement des logements:", e);
-        setLogements([]);
+        
+        setLogements(results);
+        setError(null);
+      } catch (err) {
+        console.error('❌ Erreur lors du chargement des logements:', err);
+        setError('Une erreur est survenue lors du chargement des logements.');
       } finally {
         setLoading(false);
       }
     }
+
     fetchLogements();
-  }, []);
+  }, [searchParams]); // Réexécuter lorsque les paramètres de recherche changent
+
+  useEffect(() => {
+  console.log("Logements avec distances:", logements.map(l => ({
+    id: l.$id,
+    titre: l.titre,
+    distanceAdresse: l.adresse?.distance,
+  })));
+}, [logements]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <Loader2 className="h-10 w-10 animate-spin text-[#ff5734]" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <div className="text-center py-10 text-[#ff5734]">{error}</div>;
+  }
+
+  if (logements.length === 0) {
+    return (
+      <div className="text-center py-20">
+        <h3 className="text-xl font-medium mb-2">Aucun logement trouvé</h3>
+        <p className="text-gray-400">
+          Essayez de modifier vos critères de recherche.
+        </p>
+      </div>
+    );
+  }
 
   return (
-    <section className="container py-10 text-center w-4/5">
-      <h2 className="text-2xl font-bold mb-6">Les dernières offres</h2>
-      {loading && <p>Chargement…</p>}
-      {!loading && logements.length === 0 && (
-        <Card className="p-6 text-center text-gray-500">Aucun logement trouvé.</Card>
-      )}
-      
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 items-center justify-center">
+    <div className="container py-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {logements.map((logement) => (
-          <LogementCard key={logement.$id} logement={logement} />
+          <LogementCard 
+            key={logement.$id} 
+            logement={logement} 
+            distance={logement.adresse?.distance}
+          />
         ))}
       </div>
-    </section>
+    </div>
   );
 }
