@@ -15,11 +15,6 @@ import { Check, CheckCircle, Building2, CircleDollarSign, Moon } from 'lucide-re
 
 const Index = () => {
 
-  const handleLogout = async () => {
-    await logout();
-    router.push("/");
-  };
-
   const router = useRouter();
 
   return (
@@ -85,7 +80,7 @@ const Index = () => {
         </div>
         <div className="text-center mt-12">
         <Button className='px-10 py-7 text-lg text-base rounded-xl'>
-          <Link href="/logement/recherche">Découvrir</Link>
+          <Link href="/login">Découvrir</Link>
         </Button>
         </div>
       </section>
@@ -172,7 +167,7 @@ const Index = () => {
         </div>
         <div className="text-center mt-12">
         <Button className='px-10 py-7 text-lg text-base rounded-xl'>
-          <Link href="/logement/recherche">Recherchez votre Spin</Link>
+          <Link href="/login">Recherchez votre Spin</Link>
         </Button>
         </div>
       </section>
@@ -188,7 +183,7 @@ const Index = () => {
                 <p className="text-muted-foreground mb-6 text-white/60 text-sm">
                   Nous vous accompagnons de A à Z pour mettre a disposition votre appartement, et vous avez beaucoup a y gagner !
                 </p>
-                  <Link href="/register">
+                  <Link href="/signup">
                     <Button size="lg">Découvrir SpinLiving</Button>
                   </Link>
               </div>
